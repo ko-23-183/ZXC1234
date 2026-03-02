@@ -1,75 +1,137 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Регистрация Firebase</title>
+    <meta charset="UTF-8">
+    <title>Регистрация Firebase</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            width: 300px;
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #ff6f00;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #e65c00;
+        }
+
+        .message {
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
 
-<h2>Регистрация</h2>
+<div class="container">
+    <h2>Регистрация</h2>
 
-<form id="registerForm">
-  <input type="email" id="email" placeholder="Email" required><br><br>
-  <input type="password" id="password" placeholder="Пароль" required><br><br>
-  <button type="submit">Зарегистрироваться</button>
-</form>
+    <form id="registerForm">
+        <input type="email" id="email" placeholder="Введите email" required>
+        <input type="password" id="password" placeholder="Введите пароль (мин. 6 символов)" required>
+        <button type="submit">Зарегистрироваться</button>
+    </form>
 
-<p id="message"></p>
+    <div class="message" id="message"></div>
+</div>
+
 
 <script type="module">
 
-  /* ==============================
-     1. ИМПОРТ МОДУЛЕЙ (через CDN)
-  ============================== */
+    /* ==============================
+       1. ИМПОРТ МОДУЛЕЙ (CDN)
+    ============================== */
 
-  import { initializeApp } 
-    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { initializeApp } 
+        from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
-  import { getAuth, createUserWithEmailAndPassword } 
-    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getAuth, createUserWithEmailAndPassword } 
+        from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-
-  /* ==============================
-     2. ИНИЦИАЛИЗАЦИЯ FIREBASE
-  ============================== */
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
-    authDomain: "zxc1234-668aa.firebaseapp.com",
-    projectId: "zxc1234-668aa",
-    storageBucket: "zxc1234-668aa.firebasestorage.app",
-    messagingSenderId: "587825633345",
-    appId: "1:587825633345:web:2f098c987369bc934c0ec0",
-    measurementId: "G-KSXSPNXJVP"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+    import { getFirestore, doc, setDoc } 
+        from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 
-  /* ==============================
-     3. ОБРАБОТКА ФОРМЫ
-  ============================== */
+    /* ==============================
+       2. ИНИЦИАЛИЗАЦИЯ FIREBASE
+    ============================== */
 
-  const form = document.getElementById("registerForm");
-  const message = document.getElementById("message");
+    const firebaseConfig = {
+        apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
+        authDomain: "zxc1234-668aa.firebaseapp.com",
+        projectId: "zxc1234-668aa",
+        storageBucket: "zxc1234-668aa.firebasestorage.app",
+        messagingSenderId: "587825633345",
+        appId: "1:587825633345:web:2f098c987369bc934c0ec0",
+        measurementId: "G-KSXSPNXJVP"
+    };
 
-  form.addEventListener("submit", function(event) {
-    event.preventDefault(); // отменяем перезагрузку страницы
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
 
-    createUserWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        message.style.color = "green";
-        message.textContent = "Регистрация прошла успешно!";
-      })
-      .catch((error) => {
-        message.style.color = "red";
-        message.textContent = error.message;
-      });
-  });
+    /* ==============================
+       3. ОБРАБОТКА ФОРМЫ
+    ============================== */
+
+    const form = document.getElementById("registerForm");
+    const message = document.getElementById("message");
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        try {
+            // Регистрация пользователя
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            // Сохранение данных в Firestore
+            await setDoc(doc(db, "users", user.uid), {
+                email: user.email,
+                createdAt: new Date()
+            });
+
+            message.style.color = "green";
+            message.textContent = "Регистрация успешна! Данные сохранены в Firestore.";
+
+        } catch (error) {
+            message.style.color = "red";
+            message.textContent = error.message;
+        }
+    });
 
 </script>
 
