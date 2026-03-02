@@ -2,72 +2,36 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Регистрация</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f9;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .container {
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
-      width: 300px;
-    }
-
-    h2 {
-      text-align: center;
-    }
-
-    input {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-
-    button {
-      width: 100%;
-      padding: 10px;
-      background: #ff6f00;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #e65c00;
-    }
-
-    .message {
-      margin-top: 10px;
-      text-align: center;
-      font-size: 14px;
-    }
-  </style>
+  <title>Регистрация Firebase</title>
 </head>
 <body>
 
-<div class="container">
-  <h2>Регистрация</h2>
-  <input type="email" id="email" placeholder="Введите email" required>
-  <input type="password" id="password" placeholder="Введите пароль" required>
-  <button onclick="register()">Зарегистрироваться</button>
-  <div class="message" id="message"></div>
-</div>
+<h2>Регистрация</h2>
+
+<form id="registerForm">
+  <input type="email" id="email" placeholder="Email" required><br><br>
+  <input type="password" id="password" placeholder="Пароль" required><br><br>
+  <button type="submit">Зарегистрироваться</button>
+</form>
+
+<p id="message"></p>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+
+  /* ==============================
+     1. ИМПОРТ МОДУЛЕЙ (через CDN)
+  ============================== */
+
+  import { initializeApp } 
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+
   import { getAuth, createUserWithEmailAndPassword } 
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+
+  /* ==============================
+     2. ИНИЦИАЛИЗАЦИЯ FIREBASE
+  ============================== */
 
   const firebaseConfig = {
     apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
@@ -82,21 +46,31 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
 
-  window.register = function () {
+
+  /* ==============================
+     3. ОБРАБОТКА ФОРМЫ
+  ============================== */
+
+  const form = document.getElementById("registerForm");
+  const message = document.getElementById("message");
+
+  form.addEventListener("submit", function(event) {
+    event.preventDefault(); // отменяем перезагрузку страницы
+
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
-    const message = document.getElementById("message");
 
     createUserWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
         message.style.color = "green";
-        message.textContent = "Регистрация успешна!";
+        message.textContent = "Регистрация прошла успешно!";
       })
       .catch((error) => {
         message.style.color = "red";
         message.textContent = error.message;
       });
-  }
+  });
+
 </script>
 
 </body>
