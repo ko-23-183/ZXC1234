@@ -13,6 +13,7 @@
 
 <button type="button" id="register">Register</button>
 <button type="button" id="login">Login</button>
+<button type="button" id="logout">Logout</button>
 
 <hr>
 
@@ -22,15 +23,18 @@
 <h3>Posts</h3>
 <div id="posts"></div>
 
+<p id="currentUser"></p>
+
 <script type="module">
 
-/* ===== CDN IMPORTS ===== */
+// ===== IMPORT FIREBASE =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore,
@@ -46,7 +50,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* ===== CONFIG ===== */
+// ===== CONFIG =====
 const firebaseConfig = {
   apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
   authDomain: "zxc1234-668aa.firebaseapp.com",
@@ -60,16 +64,16 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* ===== ELEMENTS ===== */
+// ===== ELEMENTS =====
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const postText = document.getElementById("postText");
 const postsDiv = document.getElementById("posts");
+const currentUserP = document.getElementById("currentUser");
 
-/* ===== REGISTER ===== */
+// ===== REGISTER =====
 document.getElementById("register").onclick = async () => {
   try {
-    console.log("Регистрация кнопка нажата");
     const cred = await createUserWithEmailAndPassword(
       auth,
       emailInput.value,
@@ -88,10 +92,9 @@ document.getElementById("register").onclick = async () => {
   }
 };
 
-/* ===== LOGIN ===== */
+// ===== LOGIN =====
 document.getElementById("login").onclick = async () => {
   try {
-    console.log("Login кнопка нажата");
     await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
     alert("Вход выполнен!");
   } catch (error) {
@@ -100,7 +103,13 @@ document.getElementById("login").onclick = async () => {
   }
 };
 
-/* ===== ADD POST ===== */
+// ===== LOGOUT =====
+document.getElementById("logout").onclick = async () => {
+  await signOut(auth);
+  alert("Выход выполнен!");
+};
+
+// ===== ADD POST =====
 document.getElementById("addPost").onclick = async () => {
   if (!auth.currentUser) return alert("Сначала войдите!");
   if (!postText.value) return alert("Введите сообщение!");
@@ -109,7 +118,8 @@ document.getElementById("addPost").onclick = async () => {
     await addDoc(collection(db, "posts"), {
       text: postText.value,
       likes: 0,
-      timestamp: serverTimestamp()
+      timestamp: serverTimestamp(),
+      userId: auth.currentUser.uid
     });
     postText.value = "";
   } catch (error) {
@@ -118,8 +128,14 @@ document.getElementById("addPost").onclick = async () => {
   }
 };
 
-/* ===== REALTIME POSTS ===== */
+// ===== REALTIME POSTS =====
 onAuthStateChanged(auth, (user) => {
+  if(user) {
+    currentUserP.textContent = `Вошёл: ${user.email}`;
+  } else {
+    currentUserP.textContent = `Не авторизован`;
+  }
+
   const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
 
   onSnapshot(q, (snap) => {
