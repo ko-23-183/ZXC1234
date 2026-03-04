@@ -99,7 +99,6 @@ document.getElementById("addPost").onclick = async () => {
     };
     reader.readAsDataURL(file);
   } else {
-    // Если картинки нет, просто текст
     try {
       await addDoc(collection(db,"posts"), {
         text: postText.value,
@@ -116,38 +115,47 @@ document.getElementById("addPost").onclick = async () => {
 };
 
 // ===== Real-time Posts =====
+let unsubscribe = null; // переменная для хранения подписки
+
 onAuthStateChanged(auth, (user) => {
   if(user){
     currentUserP.textContent = `Вошёл: ${user.displayName || user.email}`;
     postForm.style.display = "block";
     googleLoginBtn.style.display = "none";
     logoutBtn.style.display = "inline-block";
+
+    // Подписка на посты
+    const q = query(collection(db,"posts"), orderBy("timestamp","desc"));
+    if(unsubscribe) unsubscribe(); // отписка от старой подписки
+    unsubscribe = onSnapshot(q, snap => {
+      postsDiv.innerHTML = "";
+      snap.forEach(d => {
+        const data = d.data();
+        const div = document.createElement("div");
+        div.classList.add("post");
+        div.innerHTML = `
+          <p>${data.text}</p>
+          ${data.imageBase64 ? `<img src="${data.imageBase64}">` : ''}
+          <p>👍 ${data.likes}</p>
+          <button class="likeBtn">Like</button>
+        `;
+        div.querySelector(".likeBtn").onclick = async () => {
+          await updateDoc(doc(db,"posts",d.id), { likes: increment(1) });
+        };
+        postsDiv.appendChild(div);
+      });
+    });
+
   } else {
+    // Пользователь вышел → скрываем форму и сообщения
     currentUserP.textContent = `Не авторизован`;
     postForm.style.display = "none";
     googleLoginBtn.style.display = "inline-block";
     logoutBtn.style.display = "none";
-  }
 
-  const q = query(collection(db,"posts"), orderBy("timestamp","desc"));
-  onSnapshot(q, snap => {
-    postsDiv.innerHTML = "";
-    snap.forEach(d => {
-      const data = d.data();
-      const div = document.createElement("div");
-      div.classList.add("post");
-      div.innerHTML = `
-        <p>${data.text}</p>
-        ${data.imageBase64 ? `<img src="${data.imageBase64}">` : ''}
-        <p>👍 ${data.likes}</p>
-        <button class="likeBtn">Like</button>
-      `;
-      div.querySelector(".likeBtn").onclick = async () => {
-        await updateDoc(doc(db,"posts",d.id), { likes: increment(1) });
-      };
-      postsDiv.appendChild(div);
-    });
-  });
+    postsDiv.innerHTML = ""; // скрываем посты
+    if(unsubscribe) unsubscribe(); // отключаем real-time слушатель
+  }
 });
 </script>
 </body>
