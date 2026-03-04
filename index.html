@@ -2,67 +2,30 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Firebase Realtime App</title>
-
-<style>
-body{
-    font-family: Arial;
-    background:#f4f6f9;
-    display:flex;
-    justify-content:center;
-}
-
-.container{
-    width:400px;
-    background:white;
-    padding:20px;
-    margin-top:40px;
-    border-radius:10px;
-}
-
-input,button{
-    width:100%;
-    padding:10px;
-    margin:5px 0;
-}
-
-.post{
-    border:1px solid #ddd;
-    padding:10px;
-    margin-top:10px;
-}
-</style>
+<title>Firebase App</title>
 </head>
 
 <body>
 
-<div class="container">
-
 <h2>Регистрация</h2>
 
 <input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Пароль">
+<input id="password" type="password" placeholder="Password">
 
-<button id="register">Регистрация</button>
-<button id="login">Вход</button>
-
-<hr>
-
-<h3>Создать сообщение</h3>
-
-<input id="postText" placeholder="Текст сообщения">
-<button id="addPost">Отправить</button>
+<button id="register">Register</button>
+<button id="login">Login</button>
 
 <hr>
 
-<h3>Лента (Realtime)</h3>
+<input id="postText" placeholder="Message">
+<button id="addPost">Send</button>
+
+<h3>Posts</h3>
 <div id="posts"></div>
-
-</div>
 
 <script type="module">
 
-/* ================= FIREBASE IMPORT ================= */
+/* ===== CDN IMPORTS ===== */
 
 import { initializeApp }
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -90,40 +53,47 @@ serverTimestamp
 }
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* ================= CONFIG ================= */
+/* ===== CONFIG ===== */
 
 const firebaseConfig = {
-apiKey: "YOUR_KEY",
-authDomain: "YOUR_DOMAIN",
-projectId: "YOUR_PROJECT_ID",
-storageBucket: "YOUR_BUCKET",
-messagingSenderId: "YOUR_ID",
-appId: "YOUR_APP_ID"
+apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
+authDomain: "zxc1234-668aa.firebaseapp.com",
+projectId: "zxc1234-668aa",
+storageBucket: "zxc1234-668aa.firebasestorage.app",
+messagingSenderId: "587825633345",
+appId: "1:587825633345:web:2f098c987369bc934c0ec0"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* ================= REGISTER ================= */
+/* ===== ELEMENTS ===== */
+
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const postText = document.getElementById("postText");
+const postsDiv = document.getElementById("posts");
+
+/* ===== REGISTER ===== */
 
 document.getElementById("register").onclick = async () => {
 
-const email = emailInput.value;
-const password = passwordInput.value;
-
-const cred =
-await createUserWithEmailAndPassword(auth,email,password);
+const cred = await createUserWithEmailAndPassword(
+auth,
+emailInput.value,
+passwordInput.value
+);
 
 await setDoc(doc(db,"users",cred.user.uid),{
 email:cred.user.email,
 createdAt:serverTimestamp()
 });
 
-alert("Регистрация успешна");
+alert("Registered!");
 };
 
-/* ================= LOGIN ================= */
+/* ===== LOGIN ===== */
 
 document.getElementById("login").onclick = async () => {
 
@@ -133,28 +103,26 @@ emailInput.value,
 passwordInput.value
 );
 
-alert("Вход выполнен");
+alert("Logged in");
 };
 
-/* ================= ADD POST ================= */
+/* ===== ADD POST ===== */
 
-document.getElementById("addPost").onclick = async ()=>{
+document.getElementById("addPost").onclick = async () => {
 
-if(!auth.currentUser) return alert("Сначала войдите");
+if(!auth.currentUser)
+return alert("Login first");
 
 await addDoc(collection(db,"posts"),{
 text:postText.value,
 likes:0,
-uid:auth.currentUser.uid,
 timestamp:serverTimestamp()
 });
 
 postText.value="";
 };
 
-/* ================= REALTIME FEED ================= */
-
-const postsDiv=document.getElementById("posts");
+/* ===== REALTIME ===== */
 
 onAuthStateChanged(auth,(user)=>{
 
@@ -165,32 +133,26 @@ collection(db,"posts"),
 orderBy("timestamp","desc")
 );
 
-onSnapshot(q,(snapshot)=>{
+onSnapshot(q,(snap)=>{
 
 postsDiv.innerHTML="";
 
-snapshot.forEach(docSnap=>{
+snap.forEach(d=>{
 
-const data=docSnap.data();
+const data=d.data();
 
 const div=document.createElement("div");
-div.className="post";
 
 div.innerHTML=`
 <p>${data.text}</p>
 <p>👍 ${data.likes}</p>
-<button data-id="${docSnap.id}">
-Like
-</button>
+<button>Like</button>
 `;
 
 div.querySelector("button").onclick=async()=>{
-
-await updateDoc(
-doc(db,"posts",docSnap.id),
-{likes:increment(1)}
-);
-
+await updateDoc(doc(db,"posts",d.id),{
+likes:increment(1)
+});
 };
 
 postsDiv.appendChild(div);
@@ -202,5 +164,6 @@ postsDiv.appendChild(div);
 });
 
 </script>
+
 </body>
 </html>
