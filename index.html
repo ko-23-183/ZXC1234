@@ -187,12 +187,12 @@
       -webkit-overflow-scrolling:touch;
       overscroll-behavior:contain;
     
-      align-items:flex-start; /* ✅ ключ: не растягиваем элементы */
+      align-items:flex-start; /* не растягивать пузырь на всю ширину */
     }
     
     .bubble{
-      width:fit-content;       /* ✅ пузырь по размеру текста */
-      max-width:78%;           /* ✅ но не шире 78% */
+      display:inline-block;   /* ✅ вместо fit-content */
+      max-width:78%;
       border-radius:18px;
       padding:10px 12px;
       border:1px solid var(--stroke);
@@ -200,10 +200,11 @@
       backdrop-filter:blur(12px);
       box-shadow:0 10px 28px rgba(0,0,0,.18);
       overflow:hidden;
+      min-width: 44px;
     }
     
     .bubble.me{
-      align-self:flex-end;     /* ✅ мои сообщения вправо */
+      align-self:flex-end;
       background:var(--me);
       color:#fff;
       border-color:rgba(255,255,255,.10);
@@ -214,8 +215,8 @@
       font-size:14px;
       line-height:1.35;
       white-space:pre-wrap;
-      overflow-wrap:anywhere;  /* ✅ ломаем длинные строки */
-      word-break:break-word;   /* ✅ страховка */
+      overflow-wrap:break-word; /* ✅ вместо anywhere */
+      word-break:break-word;
     }
     .time{margin-top:6px; font-size:11px; opacity:.75; text-align:right}
 
@@ -875,4 +876,5 @@
   </script>
 </body>
 </html>
+
 
