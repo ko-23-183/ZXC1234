@@ -439,6 +439,39 @@
 
     // unread map: otherUid -> true/false
     const unread = new Map();
+    // ===== Sound (put message.mp3 near index.html) =====
+    const msgSound = new Audio("message.mp3");
+    msgSound.volume = 0.6;
+
+    msgSound.addEventListener("canplaythrough", () => console.log("Sound loaded ✅"));
+    msgSound.addEventListener("error", () => console.log("Sound load ERROR ❌", msgSound.src));
+
+    // iOS/Android: unlock audio after first user gesture
+    let audioUnlocked = false;
+
+    async function unlockAudioOnce(){
+      if (audioUnlocked) return;
+      audioUnlocked = true;
+
+      try{
+        const prev = msgSound.volume;
+        msgSound.volume = 0.001;
+        await msgSound.play();
+        msgSound.pause();
+        msgSound.currentTime = 0;
+        msgSound.volume = prev;
+        console.log("Audio unlocked ✅");
+          }catch(e){
+            console.warn("Audio still blocked:", e);
+          }
+        }
+
+    document.addEventListener("touchstart", unlockAudioOnce, { once: true });
+    document.addEventListener("click", unlockAudioOnce, { once: true });
+
+    async function playMsgSound(){
+      try { await msgSound.play(); } catch (_) {}
+    }
 
     // ===== Helpers =====
     function setTheme(theme){
@@ -772,3 +805,4 @@
   </script>
 </body>
 </html>
+
