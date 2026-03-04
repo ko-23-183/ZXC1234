@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Firebase Google Auth + Likes + Images</title>
+<title>Firebase Google Auth + Likes + Base64 Images</title>
 <style>
   img { max-width: 200px; display: block; margin: 5px 0; }
   .post { border: 1px solid #ccc; padding: 5px; margin-bottom: 10px; }
@@ -35,7 +35,6 @@ import {
   getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp,
   updateDoc, doc, increment 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 // ===== Firebase Config =====
 const firebaseConfig = {
@@ -50,7 +49,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 const provider = new GoogleAuthProvider();
 
 // ===== Elements =====
@@ -72,39 +70,48 @@ logoutBtn.onclick = async () => {
   await signOut(auth);
 };
 
-// ===== Add Post =====
+// ===== Add Post (Base64 Image) =====
 document.getElementById("addPost").onclick = async () => {
   if(!auth.currentUser) return alert("Сначала войдите через Google");
   if(!postText.value) return alert("Введите сообщение");
 
-  let imageUrl = null;
+  let imageBase64 = null;
 
   if(fileInput.files.length > 0){
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = async () => {
+      imageBase64 = reader.result;
+      try {
+        await addDoc(collection(db,"posts"), {
+          text: postText.value,
+          timestamp: serverTimestamp(),
+          likes: 0,
+          userId: auth.currentUser.uid,
+          imageBase64: imageBase64
+        });
+        postText.value = "";
+        fileInput.value = "";
+      } catch(e){
+        alert("Ошибка при добавлении поста: " + e.message);
+        console.error(e);
+      }
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // Если картинки нет, просто текст
     try {
-      const file = fileInput.files[0];
-      const storageRef = ref(storage, `images/${auth.currentUser.uid}/${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      imageUrl = await getDownloadURL(snapshot.ref);
+      await addDoc(collection(db,"posts"), {
+        text: postText.value,
+        timestamp: serverTimestamp(),
+        likes: 0,
+        userId: auth.currentUser.uid
+      });
+      postText.value = "";
     } catch(e){
-      alert("Ошибка при загрузке картинки: " + e.message);
+      alert("Ошибка при добавлении поста: " + e.message);
       console.error(e);
-      return;
     }
-  }
-
-  try {
-    await addDoc(collection(db,"posts"), {
-      text: postText.value,
-      timestamp: serverTimestamp(),
-      likes: 0,
-      userId: auth.currentUser.uid,
-      image: imageUrl
-    });
-    postText.value = "";
-    fileInput.value = "";
-  } catch(e){
-    alert("Ошибка при добавлении поста: " + e.message);
-    console.error(e);
   }
 };
 
@@ -131,7 +138,7 @@ onAuthStateChanged(auth, (user) => {
       div.classList.add("post");
       div.innerHTML = `
         <p>${data.text}</p>
-        ${data.image ? `<img src="${data.image}">` : ''}
+        ${data.imageBase64 ? `<img src="${data.imageBase64}">` : ''}
         <p>👍 ${data.likes}</p>
         <button class="likeBtn">Like</button>
       `;
