@@ -2,12 +2,11 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Firebase Google Auth</title>
+<title>Firebase Google Auth + Likes + Images</title>
 </head>
 <body>
 
 <h2>Авторизация через Google</h2>
-
 <button type="button" id="googleLogin">Войти через Google</button>
 <button type="button" id="logout" style="display:none;">Выйти</button>
 
@@ -15,6 +14,7 @@
 
 <div id="postForm" style="display:none;">
   <input id="postText" placeholder="Введите сообщение">
+  <input type="file" id="fileInput">
   <button type="button" id="addPost">Отправить</button>
 </div>
 
@@ -25,7 +25,8 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, updateDoc, doc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
@@ -39,43 +40,50 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
+const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
 const googleLoginBtn = document.getElementById("googleLogin");
 const logoutBtn = document.getElementById("logout");
 const postForm = document.getElementById("postForm");
 const postText = document.getElementById("postText");
+const fileInput = document.getElementById("fileInput");
 const postsDiv = document.getElementById("posts");
 const currentUserP = document.getElementById("currentUser");
 
 // ===== LOGIN GOOGLE =====
 googleLoginBtn.onclick = async () => {
-  try {
-    await signInWithPopup(auth, googleProvider);
-  } catch(e) {
-    alert("Ошибка авторизации: " + e.message);
-  }
+  try { await signInWithPopup(auth, googleProvider); } 
+  catch(e){ alert("Ошибка авторизации: " + e.message); }
 };
 
 // ===== LOGOUT =====
-logoutBtn.onclick = async () => {
-  await signOut(auth);
-};
+logoutBtn.onclick = async () => { await signOut(auth); };
 
 // ===== ADD POST =====
 document.getElementById("addPost").onclick = async () => {
   if(!auth.currentUser) return alert("Сначала войдите через Google");
   if(!postText.value) return alert("Введите сообщение");
 
+  let imageUrl = null;
+  if(fileInput.files.length > 0){
+    const file = fileInput.files[0];
+    const storageRef = ref(storage, `images/${auth.currentUser.uid}/${Date.now()}_${file.name}`);
+    await uploadBytes(storageRef, file);
+    imageUrl = await getDownloadURL(storageRef);
+  }
+
   try {
     await addDoc(collection(db,"posts"),{
       text: postText.value,
       timestamp: serverTimestamp(),
-      userId: auth.currentUser.uid
+      likes: 0,
+      userId: auth.currentUser.uid,
+      image: imageUrl
     });
     postText.value = "";
-  } catch(e) {
+    fileInput.value = "";
+  } catch(e){
     alert("Ошибка при отправке: " + e.message);
   }
 };
@@ -100,7 +108,15 @@ onAuthStateChanged(auth, (user) => {
     snap.forEach(d => {
       const data = d.data();
       const div = document.createElement("div");
-      div.innerHTML = `<p>${data.text}</p>`;
+      div.innerHTML = `
+        <p>${data.text}</p>
+        ${data.image ? `<img src="${data.image}" width="200">` : ''}
+        <p>👍 ${data.likes}</p>
+        <button class="likeBtn">Like</button>
+      `;
+      div.querySelector(".likeBtn").onclick = async () => {
+        await updateDoc(doc(db,"posts",d.id), { likes: increment(1) });
+      };
       postsDiv.appendChild(div);
     });
   });
