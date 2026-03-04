@@ -2,29 +2,37 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Firebase Google Auth + Likes + Base64 Images</title>
+<title>Firebase Chat</title>
 <style>
-  img { max-width: 200px; display: block; margin: 5px 0; }
-  .post { border: 1px solid #ccc; padding: 5px; margin-bottom: 10px; }
+  body { font-family: Arial, sans-serif; margin: 0; display: flex; height: 100vh; }
+  #userList { width: 200px; border-right: 1px solid #ccc; padding: 10px; overflow-y: auto; }
+  #chatContainer { flex: 1; display: flex; flex-direction: column; }
+  #messages { flex: 1; padding: 10px; overflow-y: auto; background: #f5f5f5; }
+  .message { padding: 5px 10px; margin-bottom: 5px; border-radius: 10px; max-width: 60%; }
+  .message.me { background: #a8ddfd; margin-left: auto; text-align: right; }
+  .message.other { background: #e5e5e5; text-align: left; }
+  #sendForm { display: flex; padding: 10px; border-top: 1px solid #ccc; }
+  #sendForm input[type="text"] { flex: 1; padding: 5px; margin-right: 5px; }
+  #sendForm input[type="file"] { margin-right: 5px; }
 </style>
 </head>
 <body>
 
-<h2>Авторизация через Google</h2>
-<button id="googleLogin">Войти через Google</button>
-<button id="logout" style="display:none;">Выйти</button>
-
-<hr>
-
-<div id="postForm" style="display:none;">
-  <input id="postText" placeholder="Введите сообщение">
-  <input type="file" id="fileInput">
-  <button id="addPost">Отправить</button>
+<div id="userList">
+  <h3>Пользователи</h3>
+  <div id="users"></div>
+  <button id="googleLogin">Войти через Google</button>
+  <button id="logout" style="display:none;">Выйти</button>
 </div>
 
-<h3>Posts</h3>
-<div id="posts"></div>
-<p id="currentUser"></p>
+<div id="chatContainer">
+  <div id="messages"></div>
+  <div id="sendForm" style="display:none;">
+    <input type="text" id="messageText" placeholder="Введите сообщение">
+    <input type="file" id="messageFile">
+    <button id="sendMessage">Отправить</button>
+  </div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -32,11 +40,9 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { 
-  getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp,
-  updateDoc, doc, increment 
+  getFirestore, collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp, doc 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ===== Firebase Config =====
 const firebaseConfig = {
   apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
   authDomain: "zxc1234-668aa.firebaseapp.com",
@@ -51,112 +57,133 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// ===== Elements =====
+// Элементы
 const googleLoginBtn = document.getElementById("googleLogin");
 const logoutBtn = document.getElementById("logout");
-const postForm = document.getElementById("postForm");
-const postText = document.getElementById("postText");
-const fileInput = document.getElementById("fileInput");
-const postsDiv = document.getElementById("posts");
-const currentUserP = document.getElementById("currentUser");
+const usersDiv = document.getElementById("users");
+const messagesDiv = document.getElementById("messages");
+const sendForm = document.getElementById("sendForm");
+const messageText = document.getElementById("messageText");
+const messageFile = document.getElementById("messageFile");
+const sendMessageBtn = document.getElementById("sendMessage");
 
-// ===== Login / Logout =====
-googleLoginBtn.onclick = async () => {
-  try { await signInWithPopup(auth, provider); } 
-  catch(e){ alert("Ошибка авторизации: " + e.message); console.error(e); }
-};
+let currentUser = null;
+let currentChatId = null;
 
-logoutBtn.onclick = async () => {
-  await signOut(auth);
-};
+// ===== Авторизация =====
+googleLoginBtn.onclick = async () => { try { await signInWithPopup(auth, provider); } catch(e){ alert(e.message); } };
+logoutBtn.onclick = async () => { await signOut(auth); };
 
-// ===== Add Post (Base64 Image) =====
-document.getElementById("addPost").onclick = async () => {
-  if(!auth.currentUser) return alert("Сначала войдите через Google");
-  if(!postText.value) return alert("Введите сообщение");
-
-  let imageBase64 = null;
-
-  if(fileInput.files.length > 0){
-    const file = fileInput.files[0];
-    const reader = new FileReader();
-    reader.onload = async () => {
-      imageBase64 = reader.result;
-      try {
-        await addDoc(collection(db,"posts"), {
-          text: postText.value,
-          timestamp: serverTimestamp(),
-          likes: 0,
-          userId: auth.currentUser.uid,
-          imageBase64: imageBase64
-        });
-        postText.value = "";
-        fileInput.value = "";
-      } catch(e){
-        alert("Ошибка при добавлении поста: " + e.message);
-        console.error(e);
-      }
-    };
-    reader.readAsDataURL(file);
-  } else {
-    try {
-      await addDoc(collection(db,"posts"), {
-        text: postText.value,
-        timestamp: serverTimestamp(),
-        likes: 0,
-        userId: auth.currentUser.uid
-      });
-      postText.value = "";
-    } catch(e){
-      alert("Ошибка при добавлении поста: " + e.message);
-      console.error(e);
-    }
-  }
-};
-
-// ===== Real-time Posts =====
-let unsubscribe = null; // переменная для хранения подписки
-
-onAuthStateChanged(auth, (user) => {
+// ===== Список пользователей =====
+let usersUnsub = null;
+onAuthStateChanged(auth, async user => {
+  currentUser = user;
   if(user){
-    currentUserP.textContent = `Вошёл: ${user.displayName || user.email}`;
-    postForm.style.display = "block";
     googleLoginBtn.style.display = "none";
     logoutBtn.style.display = "inline-block";
+    sendForm.style.display = "flex";
 
-    // Подписка на посты
-    const q = query(collection(db,"posts"), orderBy("timestamp","desc"));
-    if(unsubscribe) unsubscribe(); // отписка от старой подписки
-    unsubscribe = onSnapshot(q, snap => {
-      postsDiv.innerHTML = "";
-      snap.forEach(d => {
-        const data = d.data();
+    // Получаем всех пользователей кроме текущего
+    const usersQ = collection(db,"users");
+    if(usersUnsub) usersUnsub();
+    usersUnsub = onSnapshot(usersQ, snap => {
+      usersDiv.innerHTML = "";
+      snap.forEach(doc => {
+        if(doc.id === user.uid) return;
         const div = document.createElement("div");
-        div.classList.add("post");
-        div.innerHTML = `
-          <p>${data.text}</p>
-          ${data.imageBase64 ? `<img src="${data.imageBase64}">` : ''}
-          <p>👍 ${data.likes}</p>
-          <button class="likeBtn">Like</button>
-        `;
-        div.querySelector(".likeBtn").onclick = async () => {
-          await updateDoc(doc(db,"posts",d.id), { likes: increment(1) });
-        };
-        postsDiv.appendChild(div);
+        div.textContent = doc.data().name || doc.data().email;
+        div.style.cursor = "pointer";
+        div.onclick = () => openChat(doc.id, doc.data().name || doc.data().email);
+        usersDiv.appendChild(div);
       });
     });
 
+    // Сохраняем текущего пользователя в Firestore (если нет)
+    const userRef = doc(db,"users",user.uid);
+    userRef.set({
+      name: user.displayName,
+      email: user.email
+    }, { merge: true });
+
   } else {
-    // Пользователь вышел → скрываем форму и сообщения
-    currentUserP.textContent = `Не авторизован`;
-    postForm.style.display = "none";
     googleLoginBtn.style.display = "inline-block";
     logoutBtn.style.display = "none";
-
-    postsDiv.innerHTML = ""; // скрываем посты
-    if(unsubscribe) unsubscribe(); // отключаем real-time слушатель
+    sendForm.style.display = "none";
+    messagesDiv.innerHTML = "";
+    usersDiv.innerHTML = "";
+    if(usersUnsub) usersUnsub();
   }
 });
+
+// ===== Открыть чат =====
+let messagesUnsub = null;
+function openChat(otherUid, otherName){
+  messagesDiv.innerHTML = "";
+  currentChatId = [currentUser.uid, otherUid].sort().join("_");
+  const chatRef = doc(db,"chats",currentChatId);
+
+  // Создаем чат если не существует
+  chatRef.set({
+    users: [currentUser.uid, otherUid],
+    lastMessage: "",
+    timestamp: serverTimestamp()
+  }, { merge: true });
+
+  // Подписка на сообщения
+  const messagesQ = collection(chatRef,"messages");
+  if(messagesUnsub) messagesUnsub();
+  messagesUnsub = onSnapshot(query(messagesQ, orderBy("timestamp")), snap => {
+    messagesDiv.innerHTML = "";
+    snap.forEach(d => {
+      const data = d.data();
+      const div = document.createElement("div");
+      div.className = "message " + (data.senderId === currentUser.uid ? "me":"other");
+      div.innerHTML = `
+        ${data.text ? `<p>${data.text}</p>` : ''}
+        ${data.imageBase64 ? `<img src="${data.imageBase64}">` : ''}
+      `;
+      messagesDiv.appendChild(div);
+    });
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  });
+}
+
+// ===== Отправка сообщения =====
+sendMessageBtn.onclick = async () => {
+  if(!currentChatId) return alert("Выберите пользователя");
+  const text = messageText.value;
+  let imageBase64 = null;
+
+  if(messageFile.files.length > 0){
+    const file = messageFile.files[0];
+    const reader = new FileReader();
+    reader.onload = async () => {
+      imageBase64 = reader.result;
+      await sendMessageToChat(text, imageBase64);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    await sendMessageToChat(text, null);
+  }
+  messageText.value = "";
+  messageFile.value = "";
+};
+
+async function sendMessageToChat(text, imageBase64){
+  if(!text && !imageBase64) return;
+  const chatRef = doc(db,"chats",currentChatId);
+  const messagesRef = collection(chatRef,"messages");
+  await addDoc(messagesRef,{
+    senderId: currentUser.uid,
+    text: text,
+    imageBase64: imageBase64,
+    timestamp: serverTimestamp()
+  });
+  await chatRef.update({
+    lastMessage: text || "📷 Картинка",
+    timestamp: serverTimestamp()
+  });
+}
 </script>
 </body>
 </html>
