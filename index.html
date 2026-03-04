@@ -1,139 +1,206 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Регистрация Firebase</title>
+<meta charset="UTF-8">
+<title>Firebase Realtime App</title>
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+<style>
+body{
+    font-family: Arial;
+    background:#f4f6f9;
+    display:flex;
+    justify-content:center;
+}
 
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            width: 300px;
-            text-align: center;
-        }
+.container{
+    width:400px;
+    background:white;
+    padding:20px;
+    margin-top:40px;
+    border-radius:10px;
+}
 
-        input {
-            width: 100%;
-            padding: 10px;
-            margin: 8px 0;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
+input,button{
+    width:100%;
+    padding:10px;
+    margin:5px 0;
+}
 
-        button {
-            width: 100%;
-            padding: 10px;
-            background: #ff6f00;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #e65c00;
-        }
-
-        .message {
-            margin-top: 10px;
-        }
-    </style>
+.post{
+    border:1px solid #ddd;
+    padding:10px;
+    margin-top:10px;
+}
+</style>
 </head>
+
 <body>
 
 <div class="container">
-    <h2>Регистрация</h2>
 
-    <form id="registerForm">
-        <input type="email" id="email" placeholder="Введите email" required>
-        <input type="password" id="password" placeholder="Введите пароль (мин. 6 символов)" required>
-        <button type="submit">Зарегистрироваться</button>
-    </form>
+<h2>Регистрация</h2>
 
-    <div class="message" id="message"></div>
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Пароль">
+
+<button id="register">Регистрация</button>
+<button id="login">Вход</button>
+
+<hr>
+
+<h3>Создать сообщение</h3>
+
+<input id="postText" placeholder="Текст сообщения">
+<button id="addPost">Отправить</button>
+
+<hr>
+
+<h3>Лента (Realtime)</h3>
+<div id="posts"></div>
+
 </div>
-
 
 <script type="module">
 
-    /* ==============================
-       1. ИМПОРТ МОДУЛЕЙ (CDN)
-    ============================== */
+/* ================= FIREBASE IMPORT ================= */
 
-    import { initializeApp } 
-        from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
-    import { getAuth, createUserWithEmailAndPassword } 
-        from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+getAuth,
+createUserWithEmailAndPassword,
+signInWithEmailAndPassword,
+onAuthStateChanged
+}
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-    import { getFirestore, doc, setDoc } 
-        from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+getFirestore,
+collection,
+addDoc,
+doc,
+setDoc,
+onSnapshot,
+query,
+orderBy,
+updateDoc,
+increment,
+serverTimestamp
+}
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+/* ================= CONFIG ================= */
 
-    /* ==============================
-       2. ИНИЦИАЛИЗАЦИЯ FIREBASE
-    ============================== */
+const firebaseConfig = {
+apiKey: "YOUR_KEY",
+authDomain: "YOUR_DOMAIN",
+projectId: "YOUR_PROJECT_ID",
+storageBucket: "YOUR_BUCKET",
+messagingSenderId: "YOUR_ID",
+appId: "YOUR_APP_ID"
+};
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
-        authDomain: "zxc1234-668aa.firebaseapp.com",
-        projectId: "zxc1234-668aa",
-        storageBucket: "zxc1234-668aa.firebasestorage.app",
-        messagingSenderId: "587825633345",
-        appId: "1:587825633345:web:2f098c987369bc934c0ec0",
-        measurementId: "G-KSXSPNXJVP"
-    };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+/* ================= REGISTER ================= */
 
+document.getElementById("register").onclick = async () => {
 
-    /* ==============================
-       3. ОБРАБОТКА ФОРМЫ
-    ============================== */
+const email = emailInput.value;
+const password = passwordInput.value;
 
-    const form = document.getElementById("registerForm");
-    const message = document.getElementById("message");
+const cred =
+await createUserWithEmailAndPassword(auth,email,password);
 
-    form.addEventListener("submit", async (event) => {
-        event.preventDefault();
+await setDoc(doc(db,"users",cred.user.uid),{
+email:cred.user.email,
+createdAt:serverTimestamp()
+});
 
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
+alert("Регистрация успешна");
+};
 
-        try {
-            // Регистрация пользователя
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
+/* ================= LOGIN ================= */
 
-            // Сохранение данных в Firestore
-            await setDoc(doc(db, "users", user.uid), {
-                email: user.email,
-                createdAt: new Date()
-            });
+document.getElementById("login").onclick = async () => {
 
-            message.style.color = "green";
-            message.textContent = "Регистрация успешна! Данные сохранены в Firestore.";
+await signInWithEmailAndPassword(
+auth,
+emailInput.value,
+passwordInput.value
+);
 
-        } catch (error) {
-            message.style.color = "red";
-            message.textContent = error.message;
-        }
-    });
+alert("Вход выполнен");
+};
+
+/* ================= ADD POST ================= */
+
+document.getElementById("addPost").onclick = async ()=>{
+
+if(!auth.currentUser) return alert("Сначала войдите");
+
+await addDoc(collection(db,"posts"),{
+text:postText.value,
+likes:0,
+uid:auth.currentUser.uid,
+timestamp:serverTimestamp()
+});
+
+postText.value="";
+};
+
+/* ================= REALTIME FEED ================= */
+
+const postsDiv=document.getElementById("posts");
+
+onAuthStateChanged(auth,(user)=>{
+
+if(!user) return;
+
+const q=query(
+collection(db,"posts"),
+orderBy("timestamp","desc")
+);
+
+onSnapshot(q,(snapshot)=>{
+
+postsDiv.innerHTML="";
+
+snapshot.forEach(docSnap=>{
+
+const data=docSnap.data();
+
+const div=document.createElement("div");
+div.className="post";
+
+div.innerHTML=`
+<p>${data.text}</p>
+<p>👍 ${data.likes}</p>
+<button data-id="${docSnap.id}">
+Like
+</button>
+`;
+
+div.querySelector("button").onclick=async()=>{
+
+await updateDoc(
+doc(db,"posts",docSnap.id),
+{likes:increment(1)}
+);
+
+};
+
+postsDiv.appendChild(div);
+
+});
+
+});
+
+});
 
 </script>
-
 </body>
 </html>
