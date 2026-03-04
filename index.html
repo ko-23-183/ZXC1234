@@ -127,7 +127,7 @@
     .dot{
       width:10px; height:10px;
       border-radius:999px;
-      background:#ff2d55; /* red */
+      background:#ff2d55;
       box-shadow: 0 0 0 3px rgba(255,45,85,.18);
       flex:0 0 10px;
       display:none;
@@ -205,13 +205,6 @@
     }
     .text{font-size:14px; line-height:1.35; white-space:pre-wrap; word-break:break-word}
     .time{margin-top:6px; font-size:11px; opacity:.75; text-align:right}
-    .bubble img{
-      margin-top:8px;
-      max-width:280px; width:100%;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.16);
-      display:block;
-    }
 
     .composer{
       flex:0 0 auto;
@@ -359,6 +352,7 @@
     </main>
   </div>
 
+  <!-- Put message.mp3 next to index.html -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
@@ -380,8 +374,7 @@
       doc,
       setDoc,
       serverTimestamp,
-      updateDoc,
-      getDoc
+      updateDoc
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     // ===== Firebase config =====
@@ -439,6 +432,7 @@
 
     // unread map: otherUid -> true/false
     const unread = new Map();
+
     // ===== Sound (put message.mp3 near index.html) =====
     const msgSound = new Audio("message.mp3");
     msgSound.volume = 0.6;
@@ -448,11 +442,9 @@
 
     // iOS/Android: unlock audio after first user gesture
     let audioUnlocked = false;
-
     async function unlockAudioOnce(){
       if (audioUnlocked) return;
       audioUnlocked = true;
-
       try{
         const prev = msgSound.volume;
         msgSound.volume = 0.001;
@@ -461,17 +453,22 @@
         msgSound.currentTime = 0;
         msgSound.volume = prev;
         console.log("Audio unlocked ✅");
-          }catch(e){
-            console.warn("Audio still blocked:", e);
-          }
-        }
-
+      }catch(e){
+        console.warn("Audio still blocked:", e);
+      }
+    }
     document.addEventListener("touchstart", unlockAudioOnce, { once: true });
     document.addEventListener("click", unlockAudioOnce, { once: true });
 
     async function playMsgSound(){
       try { await msgSound.play(); } catch (_) {}
     }
+
+    // play once after successful login gesture too
+    googleLoginBtn.addEventListener("click", () => unlockAudioOnce());
+
+    // Track last seen message id for current open chat
+    let lastMessageId = null;
 
     // ===== Helpers =====
     function setTheme(theme){
@@ -523,7 +520,6 @@
 
     emojiBtn.onclick = () => {
       emojiPanel.classList.toggle("show");
-      // keep chat scrolled when panel opens
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     };
 
@@ -544,6 +540,7 @@
       if(usersUnsub){ usersUnsub(); usersUnsub=null; }
       if(messagesUnsub){ messagesUnsub(); messagesUnsub=null; }
       currentChatId = null;
+      lastMessageId = null;
 
       usersDiv.innerHTML = "";
       messagesDiv.innerHTML = "";
@@ -577,6 +574,7 @@
       }
 
       subscribeUsers();
+      subscribeUnreadDots();
     });
 
     // ===== Users list =====
@@ -648,6 +646,38 @@
       });
     }
 
+    // ===== Unread dots (simple) =====
+    // We listen chats and set unread based on lastSenderId
+    let unreadUnsub = null;
+    function subscribeUnreadDots(){
+      if(unreadUnsub) unreadUnsub();
+
+      unreadUnsub = onSnapshot(collection(db,"chats"), (snap) => {
+        if(!currentUser) return;
+
+        let changed = false;
+
+        snap.forEach((d) => {
+          const chat = d.data() || {};
+          if(!Array.isArray(chat.users) || !chat.users.includes(currentUser.uid)) return;
+          const otherUid = chat.users.find(u => u !== currentUser.uid);
+          if(!otherUid) return;
+
+          // don't mark if currently opened
+          if(currentChatId && d.id === currentChatId) return;
+
+          if(chat.lastSenderId && chat.lastSenderId !== currentUser.uid){
+            if(unread.get(otherUid) !== true){
+              unread.set(otherUid, true);
+              changed = true;
+            }
+          }
+        });
+
+        if(changed) subscribeUsers(); // rerender list
+      });
+    }
+
     // ===== Open chat =====
     function openChat(otherUid, otherName){
       closeSidebar();
@@ -658,10 +688,10 @@
       emojiPanel.classList.remove("show");
 
       currentChatId = [currentUser.uid, otherUid].sort().join("_");
+      lastMessageId = null;
 
-      // mark unread off when you open this chat
+      // clear dot for this user
       unread.set(otherUid, false);
-      // rerender users quickly (dot off)
       subscribeUsers();
 
       const chatRef = doc(db,"chats",currentChatId);
@@ -670,10 +700,7 @@
         users: [currentUser.uid, otherUid],
         lastMessage: "",
         updatedAt: serverTimestamp()
-      }, { merge:true }).catch((e)=> {
-        console.error(e);
-        alert("Chat open error: " + (e?.message || e));
-      });
+      }, { merge:true });
 
       const messagesRef = collection(chatRef,"messages");
       if(messagesUnsub) messagesUnsub();
@@ -692,6 +719,7 @@
             t.textContent = data.text;
             b.appendChild(t);
           }
+
           if(data.imageBase64){
             const img = document.createElement("img");
             img.src = data.imageBase64;
@@ -708,42 +736,23 @@
         });
 
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        // SOUND only for new incoming message
+        const lastDoc = snap.docs[snap.docs.length - 1];
+        if(lastDoc){
+          const data = lastDoc.data() || {};
+          const isNew = lastDoc.id !== lastMessageId;
+
+          if(isNew && data.senderId && currentUser && data.senderId !== currentUser.uid){
+            playMsgSound();
+          }
+          lastMessageId = lastDoc.id;
+        }
       }, (err) => {
         console.error(err);
         alert("Messages read error: " + (err?.message || err));
       });
     }
-
-    // ===== Global unread tracking (red dot) =====
-    // Listen all chats for this user: if any chat updates from other user -> set dot
-    // NOTE: This uses "chats" docs lastMessage + updatedAt.
-    // For true per-user unread counts you'd store read receipts; this is a simple "new message" indicator.
-    onSnapshot(collection(db,"chats"), async (snap) => {
-      if(!currentUser) return;
-
-      snap.forEach((d) => {
-        const chat = d.data() || {};
-        if(!Array.isArray(chat.users) || !chat.users.includes(currentUser.uid)) return;
-
-        // Determine "other user" in this chat
-        const otherUid = chat.users.find(u => u !== currentUser.uid);
-        if(!otherUid) return;
-
-        // If you are currently inside this chat, ignore dot
-        const chatId = d.id;
-        if(currentChatId && chatId === currentChatId) return;
-
-        // Heuristic: if lastMessage exists and updatedAt exists, mark unread
-        // BUT: we need to know if this update was done by other user, not by us.
-        // We store lastSenderId when sending; then we can check it.
-        if(chat.lastSenderId && chat.lastSenderId !== currentUser.uid){
-          unread.set(otherUid, true);
-        }
-      });
-
-      // rerender users list to show dots
-      if(currentUser) subscribeUsers();
-    });
 
     // ===== Send message =====
     attachBtn.onclick = () => messageFile.click();
@@ -805,4 +814,3 @@
   </script>
 </body>
 </html>
-
