@@ -2,55 +2,31 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Firebase App</title>
+<title>Firebase Google Auth</title>
 </head>
 <body>
 
-<h2>Регистрация / Вход</h2>
+<h2>Авторизация через Google</h2>
 
-<input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
-
-<button type="button" id="register">Register</button>
-<button type="button" id="login">Login</button>
-<button type="button" id="logout">Logout</button>
+<button type="button" id="googleLogin">Войти через Google</button>
+<button type="button" id="logout" style="display:none;">Выйти</button>
 
 <hr>
 
-<input id="postText" placeholder="Message">
-<button type="button" id="addPost">Send</button>
+<div id="postForm" style="display:none;">
+  <input id="postText" placeholder="Введите сообщение">
+  <button type="button" id="addPost">Отправить</button>
+</div>
 
 <h3>Posts</h3>
 <div id="posts"></div>
-
 <p id="currentUser"></p>
 
 <script type="module">
-
-// ===== IMPORT FIREBASE =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  doc,
-  setDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  updateDoc,
-  increment,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ===== CONFIG =====
 const firebaseConfig = {
   apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
   authDomain: "zxc1234-668aa.firebaseapp.com",
@@ -64,101 +40,71 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// ===== ELEMENTS =====
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
+const googleProvider = new GoogleAuthProvider();
+
+const googleLoginBtn = document.getElementById("googleLogin");
+const logoutBtn = document.getElementById("logout");
+const postForm = document.getElementById("postForm");
 const postText = document.getElementById("postText");
 const postsDiv = document.getElementById("posts");
 const currentUserP = document.getElementById("currentUser");
 
-// ===== REGISTER =====
-document.getElementById("register").onclick = async () => {
+// ===== LOGIN GOOGLE =====
+googleLoginBtn.onclick = async () => {
   try {
-    const cred = await createUserWithEmailAndPassword(
-      auth,
-      emailInput.value,
-      passwordInput.value
-    );
-
-    await setDoc(doc(db,"users",cred.user.uid),{
-      email: cred.user.email,
-      createdAt: serverTimestamp()
-    });
-
-    alert("Регистрация успешна!");
-  } catch (error) {
-    alert("Ошибка регистрации: " + error.message);
-    console.error(error);
-  }
-};
-
-// ===== LOGIN =====
-document.getElementById("login").onclick = async () => {
-  try {
-    await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
-    alert("Вход выполнен!");
-  } catch (error) {
-    alert("Ошибка входа: " + error.message);
-    console.error(error);
+    await signInWithPopup(auth, googleProvider);
+  } catch(e) {
+    alert("Ошибка авторизации: " + e.message);
   }
 };
 
 // ===== LOGOUT =====
-document.getElementById("logout").onclick = async () => {
+logoutBtn.onclick = async () => {
   await signOut(auth);
-  alert("Выход выполнен!");
 };
 
 // ===== ADD POST =====
 document.getElementById("addPost").onclick = async () => {
-  if (!auth.currentUser) return alert("Сначала войдите!");
-  if (!postText.value) return alert("Введите сообщение!");
+  if(!auth.currentUser) return alert("Сначала войдите через Google");
+  if(!postText.value) return alert("Введите сообщение");
 
   try {
-    await addDoc(collection(db, "posts"), {
+    await addDoc(collection(db,"posts"),{
       text: postText.value,
-      likes: 0,
       timestamp: serverTimestamp(),
       userId: auth.currentUser.uid
     });
     postText.value = "";
-  } catch (error) {
-    alert("Ошибка при добавлении поста: " + error.message);
-    console.error(error);
+  } catch(e) {
+    alert("Ошибка при отправке: " + e.message);
   }
 };
 
-// ===== REALTIME POSTS =====
+// ===== REAL-TIME POSTS & UI =====
 onAuthStateChanged(auth, (user) => {
-  if(user) {
-    currentUserP.textContent = `Вошёл: ${user.email}`;
+  if(user){
+    currentUserP.textContent = `Вошёл: ${user.displayName || user.email}`;
+    postForm.style.display = "block";
+    googleLoginBtn.style.display = "none";
+    logoutBtn.style.display = "inline-block";
   } else {
     currentUserP.textContent = `Не авторизован`;
+    postForm.style.display = "none";
+    googleLoginBtn.style.display = "inline-block";
+    logoutBtn.style.display = "none";
   }
 
-  const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
-
-  onSnapshot(q, (snap) => {
+  const q = query(collection(db,"posts"), orderBy("timestamp","desc"));
+  onSnapshot(q, snap => {
     postsDiv.innerHTML = "";
     snap.forEach(d => {
       const data = d.data();
       const div = document.createElement("div");
-
-      div.innerHTML = `
-        <p>${data.text}</p>
-        <p>👍 ${data.likes}</p>
-        <button>Like</button>
-      `;
-
-      div.querySelector("button").onclick = async () => {
-        await updateDoc(doc(db, "posts", d.id), { likes: increment(1) });
-      };
-
+      div.innerHTML = `<p>${data.text}</p>`;
       postsDiv.appendChild(div);
     });
   });
 });
-
 </script>
 </body>
 </html>
