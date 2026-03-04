@@ -179,37 +179,48 @@
       flex:1;
       min-height:0;
       overflow-y:auto;
-      overflow-x:hidden; /* FIX: no horizontal scroll */
+      overflow-x:hidden;
       padding:18px;
       display:flex;
       flex-direction:column;
       gap:10px;
       -webkit-overflow-scrolling:touch;
       overscroll-behavior:contain;
+    
+      align-items:flex-start; /* ✅ ключ: не растягиваем элементы */
     }
-
+    
     .bubble{
-      max-width:min(620px,78%);
+      width:fit-content;       /* ✅ пузырь по размеру текста */
+      max-width:78%;           /* ✅ но не шире 78% */
       border-radius:18px;
       padding:10px 12px;
       border:1px solid var(--stroke);
       background:var(--other);
       backdrop-filter:blur(12px);
       box-shadow:0 10px 28px rgba(0,0,0,.18);
-      overflow:hidden; /* FIX: keep images inside radius */
+      overflow:hidden;
     }
+    
     .bubble.me{
-      margin-left:auto;
-      border-color:rgba(255,255,255,.10);
+      align-self:flex-end;     /* ✅ мои сообщения вправо */
       background:var(--me);
       color:#fff;
+      border-color:rgba(255,255,255,.10);
       box-shadow:0 12px 32px rgba(0,0,0,.22);
     }
-    .text{font-size:14px; line-height:1.35; white-space:pre-wrap; word-break:break-word}
+    
+    .text{
+      font-size:14px;
+      line-height:1.35;
+      white-space:pre-wrap;
+      overflow-wrap:anywhere;  /* ✅ ломаем длинные строки */
+      word-break:break-word;   /* ✅ страховка */
+    }
     .time{margin-top:6px; font-size:11px; opacity:.75; text-align:right}
 
     /* FIX: images never overflow / never create horizontal scroll */
-    .bubble img{
+      .bubble img{
       display:block;
       width:100%;
       max-width:420px;
@@ -864,3 +875,4 @@
   </script>
 </body>
 </html>
+
