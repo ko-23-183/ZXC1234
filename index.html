@@ -179,6 +179,7 @@
       flex:1;
       min-height:0;
       overflow-y:auto;
+      overflow-x:hidden; /* FIX: no horizontal scroll */
       padding:18px;
       display:flex;
       flex-direction:column;
@@ -195,6 +196,7 @@
       background:var(--other);
       backdrop-filter:blur(12px);
       box-shadow:0 10px 28px rgba(0,0,0,.18);
+      overflow:hidden; /* FIX: keep images inside radius */
     }
     .bubble.me{
       margin-left:auto;
@@ -205,6 +207,19 @@
     }
     .text{font-size:14px; line-height:1.35; white-space:pre-wrap; word-break:break-word}
     .time{margin-top:6px; font-size:11px; opacity:.75; text-align:right}
+
+    /* FIX: images never overflow / never create horizontal scroll */
+    .bubble img{
+      display:block;
+      width:100%;
+      max-width:420px;
+      height:auto;
+      max-height:min(55vh, 520px);
+      object-fit:contain;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.16);
+      margin-top:8px;
+    }
 
     .composer{
       flex:0 0 auto;
@@ -254,6 +269,11 @@
       box-shadow:var(--shadow2);
       user-select:none;
     }
+    .send-btn[disabled], .icon-btn[disabled]{
+      opacity:.55;
+      cursor:not-allowed;
+      transform:none !important;
+    }
 
     .emoji-panel{
       display:none;
@@ -297,6 +317,7 @@
       .sidebar.open{transform:translateX(0%)}
       .mobile-menu{display:grid; place-items:center}
       .bubble{max-width:92%}
+      .bubble img{max-width:100%} /* mobile full width */
     }
   </style>
 </head>
@@ -429,18 +450,18 @@
     let currentChatId = null;
     let usersUnsub = null;
     let messagesUnsub = null;
+    let unreadUnsub = null;
 
     // unread map: otherUid -> true/false
     const unread = new Map();
 
-    // ===== Sound (put message.mp3 near index.html) =====
+    // Track last seen message id (for sound)
+    let lastMessageId = null;
+
+    // ===== Sound =====
     const msgSound = new Audio("message.mp3");
     msgSound.volume = 0.6;
 
-    msgSound.addEventListener("canplaythrough", () => console.log("Sound loaded ✅"));
-    msgSound.addEventListener("error", () => console.log("Sound load ERROR ❌", msgSound.src));
-
-    // iOS/Android: unlock audio after first user gesture
     let audioUnlocked = false;
     async function unlockAudioOnce(){
       if (audioUnlocked) return;
@@ -452,23 +473,27 @@
         msgSound.pause();
         msgSound.currentTime = 0;
         msgSound.volume = prev;
-        console.log("Audio unlocked ✅");
-      }catch(e){
-        console.warn("Audio still blocked:", e);
-      }
+      }catch(e){}
     }
     document.addEventListener("touchstart", unlockAudioOnce, { once: true });
     document.addEventListener("click", unlockAudioOnce, { once: true });
 
     async function playMsgSound(){
-      try { await msgSound.play(); } catch (_) {}
+      try{
+        msgSound.currentTime = 0;
+        await msgSound.play();
+      }catch(e){}
     }
 
-    // play once after successful login gesture too
-    googleLoginBtn.addEventListener("click", () => unlockAudioOnce());
-
-    // Track last seen message id for current open chat
-    let lastMessageId = null;
+    // ===== Sending lock (anti-spam click) =====
+    let sending = false;
+    function setSending(v){
+      sending = v;
+      sendMessageBtn.disabled = v;
+      attachBtn.disabled = v;
+      emojiBtn.disabled = v;
+      messageText.disabled = v;
+    }
 
     // ===== Helpers =====
     function setTheme(theme){
@@ -525,8 +550,13 @@
 
     // ===== Auth =====
     googleLoginBtn.onclick = async () => {
-      try { await signInWithPopup(auth, googleProvider); }
-      catch(e){ console.error(e); alert("Google error: " + (e?.message||e)); }
+      try {
+        await unlockAudioOnce();
+        await signInWithPopup(auth, googleProvider);
+      } catch(e){
+        console.error(e);
+        alert("Google error: " + (e?.message||e));
+      }
     };
 
     logoutBtn.onclick = async () => {
@@ -539,6 +569,8 @@
 
       if(usersUnsub){ usersUnsub(); usersUnsub=null; }
       if(messagesUnsub){ messagesUnsub(); messagesUnsub=null; }
+      if(unreadUnsub){ unreadUnsub(); unreadUnsub=null; }
+
       currentChatId = null;
       lastMessageId = null;
 
@@ -640,18 +672,15 @@
           empty.textContent = "Пока нет других пользователей. Зайди с другого аккаунта для теста.";
           usersDiv.appendChild(empty);
         }
-      }, (err) => {
-        console.error(err);
-        alert("Users read error: " + (err?.message || err));
       });
     }
 
-    // ===== Unread dots (simple) =====
-    // We listen chats and set unread based on lastSenderId
-    let unreadUnsub = null;
-    function subscribeUnreadDots(){
-      if(unreadUnsub) unreadUnsub();
+    // ===== Unread dots (read receipts) =====
+    function tsToMillis(ts){
+      try { return ts?.toMillis ? ts.toMillis() : 0; } catch(_) { return 0; }
+    }
 
+    function subscribeUnreadDots(){
       unreadUnsub = onSnapshot(collection(db,"chats"), (snap) => {
         if(!currentUser) return;
 
@@ -660,21 +689,27 @@
         snap.forEach((d) => {
           const chat = d.data() || {};
           if(!Array.isArray(chat.users) || !chat.users.includes(currentUser.uid)) return;
+
           const otherUid = chat.users.find(u => u !== currentUser.uid);
           if(!otherUid) return;
 
-          // don't mark if currently opened
+          // ignore currently opened chat
           if(currentChatId && d.id === currentChatId) return;
 
-          if(chat.lastSenderId && chat.lastSenderId !== currentUser.uid){
-            if(unread.get(otherUid) !== true){
-              unread.set(otherUid, true);
-              changed = true;
-            }
+          const lastSender = chat.lastSenderId || null;
+          const lastAt = chat.lastMessageAt || chat.updatedAt || null;
+          const readAt = chat.readBy ? chat.readBy[currentUser.uid] : null;
+
+          const isFromOther = lastSender && lastSender !== currentUser.uid;
+          const isUnread = isFromOther && tsToMillis(lastAt) > tsToMillis(readAt);
+
+          if(unread.get(otherUid) !== isUnread){
+            unread.set(otherUid, isUnread);
+            changed = true;
           }
         });
 
-        if(changed) subscribeUsers(); // rerender list
+        if(changed) subscribeUsers();
       });
     }
 
@@ -690,22 +725,18 @@
       currentChatId = [currentUser.uid, otherUid].sort().join("_");
       lastMessageId = null;
 
-      // clear dot for this user
-      unread.set(otherUid, false);
-      subscribeUsers();
-
       const chatRef = doc(db,"chats",currentChatId);
 
       setDoc(chatRef, {
         users: [currentUser.uid, otherUid],
-        lastMessage: "",
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        readBy: { [currentUser.uid]: serverTimestamp() }
       }, { merge:true });
 
       const messagesRef = collection(chatRef,"messages");
       if(messagesUnsub) messagesUnsub();
 
-      messagesUnsub = onSnapshot(query(messagesRef, orderBy("timestamp")), (snap) => {
+      messagesUnsub = onSnapshot(query(messagesRef, orderBy("timestamp")), async (snap) => {
         messagesDiv.innerHTML = "";
 
         snap.forEach((d) => {
@@ -742,19 +773,27 @@
         if(lastDoc){
           const data = lastDoc.data() || {};
           const isNew = lastDoc.id !== lastMessageId;
-
-          if(isNew && data.senderId && currentUser && data.senderId !== currentUser.uid){
+          if(isNew && data.senderId && data.senderId !== currentUser.uid){
             playMsgSound();
           }
           lastMessageId = lastDoc.id;
         }
-      }, (err) => {
-        console.error(err);
-        alert("Messages read error: " + (err?.message || err));
+
+        // mark as read (immediately) and clear dot
+        try{
+          await updateDoc(chatRef, {
+            [`readBy.${currentUser.uid}`]: serverTimestamp()
+          });
+
+          if(unread.get(otherUid) !== false){
+            unread.set(otherUid, false);
+            subscribeUsers();
+          }
+        }catch(e){}
       });
     }
 
-    // ===== Send message =====
+    // ===== Send message (anti multiple clicks) =====
     attachBtn.onclick = () => messageFile.click();
 
     messageText.addEventListener("keydown", (e) => {
@@ -765,27 +804,41 @@
     });
 
     sendMessageBtn.onclick = async () => {
+      if(sending) return;
       if(!currentChatId) return alert("Выберите пользователя слева");
 
       const text = (messageText.value || "").trim();
       const hasFile = messageFile.files && messageFile.files.length > 0;
       if(!text && !hasFile) return;
 
-      if(hasFile){
-        const file = messageFile.files[0];
-        const r = new FileReader();
-        r.onload = async () => {
-          await sendMessage(text, r.result);
+      setSending(true);
+
+      try{
+        if(hasFile){
+          const file = messageFile.files[0];
+          const r = new FileReader();
+          r.onload = async () => {
+            try{
+              await sendMessage(text, r.result);
+              messageText.value = "";
+              messageFile.value = "";
+              messageText.focus();
+            } finally {
+              setSending(false);
+            }
+          };
+          r.readAsDataURL(file);
+        } else {
+          await sendMessage(text, null);
           messageText.value = "";
           messageFile.value = "";
           messageText.focus();
-        };
-        r.readAsDataURL(file);
-      } else {
-        await sendMessage(text, null);
-        messageText.value = "";
-        messageFile.value = "";
-        messageText.focus();
+          setSending(false);
+        }
+      }catch(e){
+        setSending(false);
+        console.error(e);
+        alert("Send error: " + (e?.message || e));
       }
     };
 
@@ -793,23 +846,20 @@
       const chatRef = doc(db,"chats",currentChatId);
       const messagesRef = collection(chatRef,"messages");
 
-      try{
-        await addDoc(messagesRef, {
-          senderId: currentUser.uid,
-          text: text || "",
-          imageBase64: imageBase64 || null,
-          timestamp: serverTimestamp()
-        });
+      await addDoc(messagesRef, {
+        senderId: currentUser.uid,
+        text: text || "",
+        imageBase64: imageBase64 || null,
+        timestamp: serverTimestamp()
+      });
 
-        await updateDoc(chatRef, {
-          lastMessage: text ? text : (imageBase64 ? "📷 Картинка" : ""),
-          lastSenderId: currentUser.uid,
-          updatedAt: serverTimestamp()
-        });
-      } catch (e) {
-        console.error(e);
-        alert("Send error: " + (e?.message || e));
-      }
+      await updateDoc(chatRef, {
+        lastMessage: text ? text : (imageBase64 ? "📷 Картинка" : ""),
+        lastSenderId: currentUser.uid,
+        lastMessageAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        [`readBy.${currentUser.uid}`]: serverTimestamp()
+      });
     }
   </script>
 </body>
