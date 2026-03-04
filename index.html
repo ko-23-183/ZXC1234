@@ -23,7 +23,6 @@
       --gap:14px;
       --font:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,"Noto Sans";
     }
-
     body.theme-dark{
       --bg:#0b1220; --panel:rgba(255,255,255,.06); --panel2:rgba(255,255,255,.08); --stroke:rgba(255,255,255,.10);
       --text:rgba(255,255,255,.92); --muted:rgba(255,255,255,.60); --accent:#7c5cff; --accent2:#2dd4bf; --other:rgba(255,255,255,.10);
@@ -39,7 +38,6 @@
       --text:#5b0042; --muted:rgba(91,0,66,.65); --accent:#ff3e9e; --accent2:#ff78b3; --other:#ffb7d3;
       --shadow:0 18px 55px rgba(255,0,120,.20); --shadow2:0 10px 28px rgba(255,0,120,.16);
     }
-
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
@@ -53,7 +51,6 @@
       height:100dvh;
       overflow:hidden;
     }
-
     .app{
       width:100%;
       height:100%;
@@ -61,7 +58,6 @@
       display:grid;
       grid-template-columns:320px 1fr;
     }
-
     .sidebar{
       border-right:1px solid var(--stroke);
       background:var(--panel);
@@ -73,13 +69,9 @@
       gap:var(--gap);
       overflow:hidden;
     }
-
-    .brand{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-    }
-    .brand h1{font-size:16px; margin:0; font-weight:900;}
+    .brand{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .brand h1{font-size:16px; margin:0; font-weight:900}
     .sub{font-size:12px; color:var(--muted); margin-top:3px}
-
     .pill-group{
       display:flex; gap:8px; padding:6px;
       border-radius:999px; background:var(--panel2); border:1px solid var(--stroke);
@@ -89,10 +81,8 @@
       padding:8px 10px; border-radius:999px; cursor:pointer;
       font-weight:900; font-size:12px;
     }
-    .pill.active{ background:rgba(255,255,255,.10); box-shadow:0 8px 18px rgba(0,0,0,.18); }
-
-    .auth-row{ display:flex; gap:10px; flex-wrap:wrap; }
-
+    .pill.active{background:rgba(255,255,255,.10); box-shadow:0 8px 18px rgba(0,0,0,.18)}
+    .auth-row{display:flex; gap:10px; flex-wrap:wrap}
     .btn{
       border:0; cursor:pointer; font-weight:900; border-radius:12px;
       padding:10px 12px; color:#fff;
@@ -101,24 +91,19 @@
       transition:transform .12s ease, opacity .12s ease;
       white-space:nowrap;
     }
-    .btn:hover{ transform:translateY(-2px); }
-    .btn:active{ transform:translateY(0); opacity:.92; }
-    .btn.ghost{
-      background:transparent; color:var(--text);
-      border:1px solid var(--stroke); box-shadow:none;
-    }
+    .btn:hover{transform:translateY(-2px)}
+    .btn:active{transform:translateY(0); opacity:.92}
+    .btn.ghost{background:transparent; color:var(--text); border:1px solid var(--stroke); box-shadow:none}
     .btn.apple{
       background:linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.08));
       color:var(--text);
       border:1px solid var(--stroke);
     }
-
     .users-head .label{
       font-weight:900; font-size:12px; letter-spacing:.3px;
       color:var(--muted); text-transform:uppercase;
       margin-top:4px;
     }
-
     .users{
       flex:1; min-height:0;
       overflow:auto; padding-right:6px;
@@ -142,10 +127,10 @@
       overflow:hidden;
       flex:0 0 34px;
     }
-    .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
-    .meta{ min-width:0; display:flex; flex-direction:column; }
-    .name{ font-weight:900; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .email{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .avatar img{width:100%; height:100%; object-fit:cover; display:block}
+    .meta{min-width:0; display:flex; flex-direction:column}
+    .name{font-weight:900; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .email{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 
     .chat{
       display:flex; flex-direction:column;
@@ -159,7 +144,6 @@
       backdrop-filter:blur(18px);
       display:flex; align-items:center; gap:12px;
     }
-
     .mobile-menu{
       display:none;
       border:1px solid var(--stroke);
@@ -170,10 +154,9 @@
       cursor:pointer;
       box-shadow:0 10px 22px rgba(0,0,0,.18);
     }
-
-    .chat-title{ display:flex; flex-direction:column; min-width:0; }
-    .chat-title .top{ font-weight:950; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .chat-title .bottom{ font-size:12px; color:var(--muted); margin-top:2px; }
+    .chat-title{display:flex; flex-direction:column; min-width:0}
+    .chat-title .top{font-weight:950; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .chat-title .bottom{font-size:12px; color:var(--muted); margin-top:2px}
 
     .messages{
       flex:1;
@@ -186,7 +169,6 @@
       -webkit-overflow-scrolling:touch;
       overscroll-behavior:contain;
     }
-
     .bubble{
       max-width:min(620px,78%);
       border-radius:18px;
@@ -203,8 +185,8 @@
       color:#fff;
       box-shadow:0 12px 32px rgba(0,0,0,.22);
     }
-    .text{ font-size:14px; line-height:1.35; white-space:pre-wrap; word-break:break-word; }
-    .time{ margin-top:6px; font-size:11px; opacity:.75; text-align:right; }
+    .text{font-size:14px; line-height:1.35; white-space:pre-wrap; word-break:break-word}
+    .time{margin-top:6px; font-size:11px; opacity:.75; text-align:right}
     .bubble img{
       margin-top:8px;
       max-width:280px; width:100%;
@@ -212,7 +194,6 @@
       border:1px solid rgba(255,255,255,.16);
       display:block;
     }
-
     .composer{
       flex:0 0 auto;
       padding:14px 16px;
@@ -240,7 +221,7 @@
       color:var(--text);
       font-size:14px;
     }
-    .file{ display:none; }
+    .file{display:none}
     .icon-btn{
       width:42px; height:42px;
       border-radius:14px;
@@ -258,7 +239,6 @@
       background:linear-gradient(135deg,var(--accent),var(--accent2));
       box-shadow:var(--shadow2);
     }
-
     .overlay{
       position:fixed; inset:0;
       background:rgba(0,0,0,.40);
@@ -266,10 +246,10 @@
       z-index:10;
       display:none;
     }
-    .overlay.show{ display:block; }
+    .overlay.show{display:block}
 
     @media (max-width: 920px){
-      .app{ grid-template-columns:1fr; }
+      .app{grid-template-columns:1fr}
       .sidebar{
         position:fixed; top:0; left:0; bottom:0;
         width:min(360px,86vw);
@@ -277,9 +257,9 @@
         transition:transform .18s ease;
         z-index:20;
       }
-      .sidebar.open{ transform:translateX(0%); }
-      .mobile-menu{ display:grid; place-items:center; }
-      .bubble{ max-width:92%; }
+      .sidebar.open{transform:translateX(0%)}
+      .mobile-menu{display:grid; place-items:center}
+      .bubble{max-width:92%}
     }
   </style>
 </head>
@@ -333,6 +313,7 @@
     </main>
   </div>
 
+  <!-- Put message.mp3 next to index.html (same folder) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
@@ -373,18 +354,17 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Make auth survive reloads better
-    try {
-      await setPersistence(auth, browserLocalPersistence);
-    } catch (e) {
-      console.warn("setPersistence failed:", e);
-    }
+    try { await setPersistence(auth, browserLocalPersistence); }
+    catch (e) { console.warn("setPersistence failed:", e); }
 
     const googleProvider = new GoogleAuthProvider();
-
     const appleProvider = new OAuthProvider("apple.com");
     appleProvider.addScope("email");
     appleProvider.addScope("name");
+
+    // Sound: put file message.mp3 near index.html
+    const msgSound = new Audio("message.mp3");
+    msgSound.volume = 0.6;
 
     // DOM
     const sidebar = document.getElementById("sidebar");
@@ -416,6 +396,9 @@
     let usersUnsub = null;
     let messagesUnsub = null;
 
+    // Sound control per chat
+    let lastMessageId = null;
+
     function setTheme(theme){
       document.body.classList.remove("theme-dark","theme-light","theme-masha");
       document.body.classList.add(theme);
@@ -445,13 +428,16 @@
       return d ? d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
     }
 
-    // Try to read redirect result (if Apple used redirect)
+    async function safePlay(){
+      try { await msgSound.play(); } catch (_) {}
+    }
+
+    // Handle redirect result (Apple redirect fallback)
     try {
-      const res = await getRedirectResult(auth);
-      if (res?.user) console.log("Redirect sign-in ok:", res.user.uid);
+      await getRedirectResult(auth);
     } catch (e) {
       console.error("getRedirectResult error:", e);
-      alert("Apple redirect error: " + (e?.message || e));
+      alert("Auth redirect error: " + (e?.message || e));
     }
 
     googleLoginBtn.onclick = async () => {
@@ -459,13 +445,12 @@
       catch(e){ console.error(e); alert("Google error: " + (e?.message||e)); }
     };
 
-    // Apple: try popup first (best when redirect state breaks), fallback to redirect
+    // Apple: popup first, redirect fallback
     appleLoginBtn.onclick = async () => {
       try {
         await signInWithPopup(auth, appleProvider);
       } catch (e) {
         console.warn("Apple popup failed, fallback to redirect:", e);
-        // Popup blocked/unsupported -> redirect fallback
         try {
           await signInWithRedirect(auth, appleProvider);
         } catch (e2) {
@@ -486,6 +471,7 @@
       if(usersUnsub){ usersUnsub(); usersUnsub=null; }
       if(messagesUnsub){ messagesUnsub(); messagesUnsub=null; }
       currentChatId = null;
+      lastMessageId = null;
 
       usersDiv.innerHTML = "";
       messagesDiv.innerHTML = "";
@@ -529,6 +515,7 @@
 
         snap.forEach((d) => {
           if(d.id === currentUser.uid) return;
+
           const data = d.data() || {};
           const name = data.name || data.email || "Пользователь";
           const email = data.email || "";
@@ -584,6 +571,8 @@
       chatSubEl.textContent = "Сообщения в реальном времени";
 
       currentChatId = [currentUser.uid, otherUid].sort().join("_");
+      lastMessageId = null; // reset for sound per opened chat
+
       const chatRef = doc(db,"chats",currentChatId);
 
       setDoc(chatRef, {
@@ -627,6 +616,19 @@
         });
 
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        // SOUND for everyone: play only on NEW last message from other user
+        const lastDoc = snap.docs[snap.docs.length - 1];
+        if(!lastDoc) return;
+
+        const lastData = lastDoc.data() || {};
+        const isNew = lastDoc.id !== lastMessageId;
+
+        if(isNew && lastData.senderId && currentUser && lastData.senderId !== currentUser.uid){
+          safePlay();
+        }
+
+        lastMessageId = lastDoc.id;
       }, (err) => {
         console.error(err);
         alert("Messages read error: " + (err?.message || err));
