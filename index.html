@@ -2,12 +2,13 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>ZXC Chat</title>
 
   <style>
     /* =========================
        Premium UI + 3 themes
+       Fixes: mobile scroll + 100dvh
        ========================= */
     :root{
       --bg: #0b1220;
@@ -84,15 +85,15 @@
                   radial-gradient(900px 700px at 85% 25%, rgba(45,212,191,.14), transparent 55%),
                   var(--bg);
       color: var(--text);
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
+      height: 100dvh;           /* FIX: mobile address bar */
+      overflow: hidden;         /* scroll only inside panels */
     }
 
     /* Layout */
     .app{
       width: 100%;
       height: 100%;
+      min-height: 0;            /* FIX flex overflow */
       display: grid;
       grid-template-columns: 320px 1fr;
     }
@@ -123,7 +124,7 @@
     .brand h1{
       font-size: 16px;
       margin: 0;
-      font-weight: 800;
+      font-weight: 900;
       letter-spacing: .2px;
     }
     .brand .sub{
@@ -141,7 +142,7 @@
     .btn{
       border: 0;
       cursor: pointer;
-      font-weight: 800;
+      font-weight: 900;
       border-radius: 12px;
       padding: 10px 12px;
       color: #fff;
@@ -180,7 +181,7 @@
       padding: 8px 10px;
       border-radius: 999px;
       cursor: pointer;
-      font-weight: 800;
+      font-weight: 900;
       font-size: 12px;
       transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
     }
@@ -207,8 +208,11 @@
 
     .users{
       flex: 1;
+      min-height: 0;            /* FIX: allow scroll in flex */
       overflow: auto;
       padding-right: 6px;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
     .user{
       display: flex;
@@ -268,13 +272,15 @@
 
     /* Chat */
     .chat{
-      display:flex;
-      flex-direction:column;
-      height:100%;
-      min-height:0;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;            /* FIX: allow messages scroll */
+      min-width: 0;
     }
 
     .chat-header{
+      flex: 0 0 auto;
       height: 64px;
       padding: 14px 16px;
       border-bottom: 1px solid var(--stroke);
@@ -325,12 +331,14 @@
 
     .messages{
       flex: 1;
-      min-height: 0;
-      overflow-y: auto;
+      min-height: 0;            /* FIX: key for scrolling */
+      overflow-y: auto;         /* FIX */
       padding: 18px;
       display: flex;
       flex-direction: column;
       gap: 10px;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
 
     .bubble{
@@ -368,7 +376,7 @@
 
     .bubble img{
       margin-top: 8px;
-      max-width: 260px;
+      max-width: 280px;
       width: 100%;
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,.16);
@@ -376,6 +384,7 @@
     }
 
     .composer{
+      flex: 0 0 auto;           /* FIX: avoid shrinking weirdly */
       padding: 14px 16px;
       border-top: 1px solid var(--stroke);
       background: var(--panel);
@@ -383,6 +392,7 @@
       display: none;
       gap: 10px;
       align-items: center;
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
     }
 
     .field{
@@ -404,11 +414,11 @@
       background: transparent;
       color: var(--text);
       font-size: 14px;
+      min-width: 0;
     }
 
-    .file{
-      display: none;
-    }
+    .file{ display: none; }
+
     .icon-btn{
       width: 42px;
       height: 42px;
@@ -423,6 +433,7 @@
       user-select: none;
     }
     .icon-btn:hover{ transform: translateY(-2px); }
+
     .send-btn{
       width: 46px;
       height: 46px;
@@ -437,6 +448,17 @@
     }
     .send-btn:hover{ transform: translateY(-2px); }
     .send-btn:active{ transform: translateY(0px); opacity: .92; }
+
+    /* Mobile overlay */
+    .overlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.40);
+      backdrop-filter: blur(2px);
+      z-index: 10;
+      display: none;
+    }
+    .overlay.show{ display: block; }
 
     /* Scrollbars */
     .users::-webkit-scrollbar,
@@ -467,16 +489,7 @@
       }
       .sidebar.open{ transform: translateX(0%); }
       .mobile-menu{ display: grid; place-items: center; }
-      .overlay{
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,.40);
-        backdrop-filter: blur(2px);
-        z-index: 10;
-        display: none;
-      }
-      .overlay.show{ display: block; }
-      .bubble{ max-width: 86%; }
+      .bubble{ max-width: 92%; }
     }
   </style>
 </head>
@@ -539,10 +552,28 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
-      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, serverTimestamp, updateDoc }
-      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      OAuthProvider,
+      signInWithPopup,
+      signInWithRedirect,
+      getRedirectResult,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      query,
+      orderBy,
+      onSnapshot,
+      doc,
+      setDoc,
+      serverTimestamp,
+      updateDoc
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     // ===== Firebase config =====
     const firebaseConfig = {
@@ -590,7 +621,6 @@
     // ===== State =====
     let currentUser = null;
     let currentChatId = null;
-
     let usersUnsub = null;
     let messagesUnsub = null;
 
@@ -647,22 +677,33 @@
     tLight.addEventListener("click", () => setTheme("theme-light"));
     tMasha.addEventListener("click", () => setTheme("theme-masha"));
 
+    // ===== Apple redirect result handler (IMPORTANT) =====
+    (async () => {
+      try{
+        await getRedirectResult(auth);
+      }catch(e){
+        console.error("Redirect result error:", e);
+        // Not fatal; show only if it's a real auth error
+      }
+    })();
+
     // ===== Auth =====
     googleLoginBtn.onclick = async () => {
       try{
         await signInWithPopup(auth, googleProvider);
       }catch(e){
-        alert(e?.message || "Ошибка входа");
         console.error(e);
+        alert(e?.message || "Ошибка входа Google");
       }
     };
 
+    // Apple: redirect (more stable on iOS/Safari)
     appleLoginBtn.onclick = async () => {
       try{
-        await signInWithPopup(auth, appleProvider);
+        await signInWithRedirect(auth, appleProvider);
       }catch(e){
-        alert(e?.message || "Ошибка входа Apple");
         console.error(e);
+        alert(e?.message || "Ошибка входа Apple");
       }
     };
 
@@ -670,14 +711,15 @@
       try{
         await signOut(auth);
       }catch(e){
-        alert(e?.message || "Ошибка выхода");
         console.error(e);
+        alert(e?.message || "Ошибка выхода");
       }
     };
 
     onAuthStateChanged(auth, async (user) => {
       currentUser = user;
 
+      // cleanup
       if(usersUnsub){ usersUnsub(); usersUnsub = null; }
       if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
       currentChatId = null;
@@ -702,9 +744,9 @@
       sendForm.style.display = "flex";
       authHint.textContent = user.displayName ? `Вы вошли как ${user.displayName}` : `Вы вошли`;
 
+      // Save user in Firestore
       try{
-        const userRef = doc(db, "users", user.uid);
-        await setDoc(userRef, {
+        await setDoc(doc(db, "users", user.uid), {
           name: user.displayName || "",
           email: user.email || "",
           photoURL: user.photoURL || "",
@@ -721,7 +763,6 @@
     // ===== Users list =====
     function subscribeUsers(){
       const usersRef = collection(db, "users");
-
       usersUnsub = onSnapshot(usersRef, (snap) => {
         usersDiv.innerHTML = "";
         let count = 0;
@@ -775,7 +816,7 @@
           empty.style.color = "var(--muted)";
           empty.style.fontSize = "13px";
           empty.style.padding = "10px";
-          empty.textContent = "Пока нет других пользователей. Зайди с другого аккаунта Google/Apple, чтобы протестировать чат.";
+          empty.textContent = "Пока нет других пользователей. Зайди с другого аккаунта, чтобы протестировать чат.";
           usersDiv.appendChild(empty);
         }
       }, (err) => {
@@ -790,7 +831,7 @@
 
       messagesDiv.innerHTML = "";
       chatNameEl.textContent = otherName;
-      chatSubEl.textContent = "Сообщения синхронизируются в реальном времени";
+      chatSubEl.textContent = "Сообщения в реальном времени";
 
       currentChatId = [currentUser.uid, otherUid].sort().join("_");
       const chatRef = doc(db, "chats", currentChatId);
@@ -801,7 +842,7 @@
         updatedAt: serverTimestamp()
       }, { merge: true }).catch((e) => {
         console.error(e);
-        alert("Не удалось создать/открыть чат. Проверь Rules: " + (e?.message || e));
+        alert("Не удалось открыть чат. Проверь Rules: " + (e?.message || e));
       });
 
       const messagesRef = collection(chatRef, "messages");
@@ -839,6 +880,7 @@
             messagesDiv.appendChild(bubble);
           });
 
+          // Keep at bottom
           messagesDiv.scrollTop = messagesDiv.scrollHeight;
         },
         (err) => {
@@ -863,7 +905,6 @@
 
       const text = (messageText.value || "").trim();
       const hasFile = messageFile.files && messageFile.files.length > 0;
-
       if(!text && !hasFile) return;
 
       if(hasFile){
@@ -908,5 +949,3 @@
   </script>
 </body>
 </html>
-
-
