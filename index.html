@@ -513,543 +513,562 @@
     </aside>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import {
-      getAuth,
-      GoogleAuthProvider,
-      signInWithPopup,
-      setPersistence,
-      browserLocalPersistence,
-      signOut,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    setPersistence,
+    browserLocalPersistence,
+    signOut,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-    import {
-      getFirestore,
-      collection,
-      addDoc,
-      query,
-      orderBy,
-      onSnapshot,
-      doc,
-      setDoc,
-      getDoc,
-      serverTimestamp,
-      updateDoc,
-      deleteDoc,
-      increment
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    query,
+    orderBy,
+    onSnapshot,
+    doc,
+    setDoc,
+    getDoc,
+    serverTimestamp,
+    updateDoc,
+    deleteDoc,
+    increment
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
-      authDomain: "zxc1234-668aa.firebaseapp.com",
-      projectId: "zxc1234-668aa",
-      storageBucket: "zxc1234-668aa.appspot.com",
-      messagingSenderId: "587825633345",
-      appId: "1:587825633345:web:2f098c987369bc934c0ec0"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
+    authDomain: "zxc1234-668aa.firebaseapp.com",
+    projectId: "zxc1234-668aa",
+    storageBucket: "zxc1234-668aa.appspot.com",
+    messagingSenderId: "587825633345",
+    appId: "1:587825633345:web:2f098c987369bc934c0ec0"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+  } catch (e) {
+    console.warn("Persistence error:", e);
+  }
+
+  const googleProvider = new GoogleAuthProvider();
+
+  const authHint = document.getElementById("authHint");
+  const googleLoginBtn = document.getElementById("googleLogin");
+  const logoutBtn = document.getElementById("logout");
+
+  const meAvatar = document.getElementById("meAvatar");
+  const meName = document.getElementById("meName");
+  const meEmail = document.getElementById("meEmail");
+
+  const friendsList = document.getElementById("friendsList");
+  const gamesList = document.getElementById("gamesList");
+  const topList = document.getElementById("topList");
+  const topPreview = document.getElementById("topPreview");
+
+  const gameTitle = document.getElementById("gameTitle");
+  const steamUrl = document.getElementById("steamUrl");
+  const coverUrl = document.getElementById("coverUrl");
+  const gameDescription = document.getElementById("gameDescription");
+  const gameTags = document.getElementById("gameTags");
+  const publishGameBtn = document.getElementById("publishGame");
+
+  const searchInput = document.getElementById("searchInput");
+  const sortSelect = document.getElementById("sortSelect");
+  const feedHint = document.getElementById("feedHint");
+
+  const gamesCount = document.getElementById("gamesCount");
+  const votesCount = document.getElementById("votesCount");
+  const friendsCount = document.getElementById("friendsCount");
+
+  let currentUser = null;
+  let friends = [];
+  let games = [];
+  let myVotes = new Map();
+
+  let usersUnsub = null;
+  let gamesUnsub = null;
+  let votesUnsub = null;
+
+  function initials(text) {
+    const parts = (text || "").trim().split(/\s+/).filter(Boolean);
+    return ((parts[0]?.[0] || "?") + (parts[1]?.[0] || "")).toUpperCase();
+  }
+
+  function escapeHtml(str = "") {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function normalizeUrl(url) {
+    const value = (url || "").trim();
+    if (!value) return "";
+    if (/^https?:\/\//i.test(value)) return value;
+    return "https://" + value;
+  }
+
+  function extractSteamAppId(url) {
+    const value = normalizeUrl(url);
+    const match = value.match(/\/app\/(\d+)/i);
+    return match ? match[1] : null;
+  }
+
+  function buildSteamCoverUrl(steamLink) {
+    const appId = extractSteamAppId(steamLink);
+    if (!appId) return "";
+    return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`;
+  }
+
+  function score(game) {
+    return (game.yesCount || 0) - (game.noCount || 0);
+  }
+
+  function totalVotes(game) {
+    return (game.yesCount || 0) + (game.noCount || 0);
+  }
+
+  function tsToMs(ts) {
     try {
-      await setPersistence(auth, browserLocalPersistence);
-    } catch (e) {
-      console.warn("Persistence error:", e);
+      return ts?.toMillis ? ts.toMillis() : 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function sortGames(list, mode) {
+    const items = [...list];
+
+    if (mode === "new") {
+      return items.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
     }
 
-    const googleProvider = new GoogleAuthProvider();
-
-    const authHint = document.getElementById("authHint");
-    const googleLoginBtn = document.getElementById("googleLogin");
-    const logoutBtn = document.getElementById("logout");
-
-    const meAvatar = document.getElementById("meAvatar");
-    const meName = document.getElementById("meName");
-    const meEmail = document.getElementById("meEmail");
-
-    const friendsList = document.getElementById("friendsList");
-    const gamesList = document.getElementById("gamesList");
-    const topList = document.getElementById("topList");
-    const topPreview = document.getElementById("topPreview");
-
-    const gameTitle = document.getElementById("gameTitle");
-    const steamUrl = document.getElementById("steamUrl");
-    const coverUrl = document.getElementById("coverUrl");
-    const gameDescription = document.getElementById("gameDescription");
-    const gameTags = document.getElementById("gameTags");
-    const publishGameBtn = document.getElementById("publishGame");
-
-    const searchInput = document.getElementById("searchInput");
-    const sortSelect = document.getElementById("sortSelect");
-    const feedHint = document.getElementById("feedHint");
-
-    const gamesCount = document.getElementById("gamesCount");
-    const votesCount = document.getElementById("votesCount");
-    const friendsCount = document.getElementById("friendsCount");
-
-    let currentUser = null;
-    let friends = [];
-    let games = [];
-    let myVotes = new Map();
-
-    let usersUnsub = null;
-    let gamesUnsub = null;
-    let votesUnsub = null;
-
-    function initials(text) {
-      const parts = (text || "").trim().split(/\s+/).filter(Boolean);
-      return ((parts[0]?.[0] || "?") + (parts[1]?.[0] || "")).toUpperCase();
-    }
-
-    function escapeHtml(str = "") {
-      return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-    function normalizeUrl(url) {
-      const value = (url || "").trim();
-      if (!value) return "";
-      if (/^https?:\/\//i.test(value)) return value;
-      return "https://" + value;
-    }
-
-    function score(game) {
-      return (game.yesCount || 0) - (game.noCount || 0);
-    }
-
-    function totalVotes(game) {
-      return (game.yesCount || 0) + (game.noCount || 0);
-    }
-
-    function tsToMs(ts) {
-      try {
-        return ts?.toMillis ? ts.toMillis() : 0;
-      } catch (_) {
-        return 0;
-      }
-    }
-
-    function sortGames(list, mode) {
-      const items = [...list];
-
-      if (mode === "new") {
-        return items.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
-      }
-
-      if (mode === "yes") {
-        return items.sort((a, b) => {
-          const byYes = (b.yesCount || 0) - (a.yesCount || 0);
-          if (byYes !== 0) return byYes;
-          return score(b) - score(a);
-        });
-      }
-
+    if (mode === "yes") {
       return items.sort((a, b) => {
-        const byScore = score(b) - score(a);
-        if (byScore !== 0) return byScore;
-
         const byYes = (b.yesCount || 0) - (a.yesCount || 0);
         if (byYes !== 0) return byYes;
-
-        return (b.createdAtMs || 0) - (a.createdAtMs || 0);
+        return score(b) - score(a);
       });
     }
 
-    function updateMeCard() {
-      if (!currentUser) {
-        meAvatar.innerHTML = "?";
-        meName.textContent = "Гость";
-        meEmail.textContent = "—";
-        return;
-      }
+    return items.sort((a, b) => {
+      const byScore = score(b) - score(a);
+      if (byScore !== 0) return byScore;
 
-      if (currentUser.photoURL) {
-        meAvatar.innerHTML = `<img src="${currentUser.photoURL}" alt="me">`;
-      } else {
-        meAvatar.textContent = initials(currentUser.displayName || currentUser.email || "Я");
-      }
+      const byYes = (b.yesCount || 0) - (a.yesCount || 0);
+      if (byYes !== 0) return byYes;
 
-      meName.textContent = currentUser.displayName || "Без имени";
-      meEmail.textContent = currentUser.email || "—";
+      return (b.createdAtMs || 0) - (a.createdAtMs || 0);
+    });
+  }
+
+  function updateMeCard() {
+    if (!currentUser) {
+      meAvatar.innerHTML = "?";
+      meName.textContent = "Гость";
+      meEmail.textContent = "—";
+      return;
     }
 
-    function renderFriends() {
-      friendsList.innerHTML = "";
-      friendsCount.textContent = String(friends.length);
+    if (currentUser.photoURL) {
+      meAvatar.innerHTML = `<img src="${currentUser.photoURL}" alt="me">`;
+    } else {
+      meAvatar.textContent = initials(currentUser.displayName || currentUser.email || "Я");
+    }
 
-      if (!friends.length) {
-        friendsList.innerHTML = `<div class="empty">Пока никто кроме тебя не зашел.</div>`;
-        return;
-      }
+    meName.textContent = currentUser.displayName || "Без имени";
+    meEmail.textContent = currentUser.email || "—";
+  }
 
-      friends.forEach(friend => {
-        const div = document.createElement("div");
-        div.className = "friend";
+  function renderFriends() {
+    friendsList.innerHTML = "";
+    friendsCount.textContent = String(friends.length);
 
-        const avatar = friend.photoURL
-          ? `<div class="avatar"><img src="${friend.photoURL}" alt="${escapeHtml(friend.name || friend.email || "user")}"></div>`
-          : `<div class="avatar">${escapeHtml(initials(friend.name || friend.email || "?"))}</div>`;
+    if (!friends.length) {
+      friendsList.innerHTML = `<div class="empty">Пока никто кроме тебя не зашел.</div>`;
+      return;
+    }
 
-        div.innerHTML = `
-          ${avatar}
-          <div class="friend-meta">
-            <div class="friend-name">${escapeHtml(friend.name || "Пользователь")}</div>
-            <div class="friend-email">${escapeHtml(friend.email || "")}</div>
+    friends.forEach(friend => {
+      const div = document.createElement("div");
+      div.className = "friend";
+
+      const avatar = friend.photoURL
+        ? `<div class="avatar"><img src="${friend.photoURL}" alt="${escapeHtml(friend.name || friend.email || "user")}"></div>`
+        : `<div class="avatar">${escapeHtml(initials(friend.name || friend.email || "?"))}</div>`;
+
+      div.innerHTML = `
+        ${avatar}
+        <div class="friend-meta">
+          <div class="friend-name">${escapeHtml(friend.name || "Пользователь")}</div>
+          <div class="friend-email">${escapeHtml(friend.email || "")}</div>
+        </div>
+      `;
+
+      friendsList.appendChild(div);
+    });
+  }
+
+  function renderTopBlocks(sortedTop) {
+    topPreview.innerHTML = "";
+    topList.innerHTML = "";
+
+    const preview = sortedTop.slice(0, 3);
+    const fullTop = sortedTop.slice(0, 10);
+
+    if (!preview.length) {
+      topPreview.innerHTML = `<div class="empty">Топ появится после первых игр.</div>`;
+    } else {
+      preview.forEach((game, i) => {
+        const el = document.createElement("div");
+        el.className = "mini-item";
+        el.innerHTML = `
+          <img src="${escapeHtml(game.coverUrl)}" alt="${escapeHtml(game.title)}">
+          <div>
+            <div class="mini-title">#${i + 1} ${escapeHtml(game.title)}</div>
+            <div class="mini-meta">Да: ${game.yesCount || 0} · Нет: ${game.noCount || 0} · Счёт: ${score(game)}</div>
           </div>
         `;
-
-        friendsList.appendChild(div);
+        topPreview.appendChild(el);
       });
     }
 
-    function renderTopBlocks(sortedTop) {
-      topPreview.innerHTML = "";
-      topList.innerHTML = "";
-
-      const preview = sortedTop.slice(0, 3);
-      const fullTop = sortedTop.slice(0, 10);
-
-      if (!preview.length) {
-        topPreview.innerHTML = `<div class="empty">Топ появится после первых игр.</div>`;
-      } else {
-        preview.forEach((game, i) => {
-          const el = document.createElement("div");
-          el.className = "mini-item";
-          el.innerHTML = `
-            <img src="${escapeHtml(game.coverUrl)}" alt="${escapeHtml(game.title)}">
-            <div>
-              <div class="mini-title">#${i + 1} ${escapeHtml(game.title)}</div>
-              <div class="mini-meta">Да: ${game.yesCount || 0} · Нет: ${game.noCount || 0} · Счёт: ${score(game)}</div>
-            </div>
-          `;
-          topPreview.appendChild(el);
-        });
-      }
-
-      if (!fullTop.length) {
-        topList.innerHTML = `<div class="empty">Пока нет ни одной игры.</div>`;
-      } else {
-        fullTop.forEach((game, i) => {
-          const el = document.createElement("div");
-          el.className = "mini-item";
-          el.innerHTML = `
-            <img src="${escapeHtml(game.coverUrl)}" alt="${escapeHtml(game.title)}">
-            <div>
-              <div class="mini-title">#${i + 1} ${escapeHtml(game.title)}</div>
-              <div class="mini-meta">${escapeHtml(game.submittedByName || "Друг")} · Да ${game.yesCount || 0} · Нет ${game.noCount || 0}</div>
-            </div>
-          `;
-          topList.appendChild(el);
-        });
-      }
-    }
-
-    function renderGames() {
-      const q = searchInput.value.trim().toLowerCase();
-      const mode = sortSelect.value;
-
-      const filtered = games.filter(game => {
-        if (!q) return true;
-
-        return [game.title, game.description, game.submittedByName, ...(game.tags || [])]
-          .filter(Boolean)
-          .some(v => String(v).toLowerCase().includes(q));
-      });
-
-      const sorted = sortGames(filtered, mode);
-      const globalTop = sortGames(games, "top");
-
-      renderTopBlocks(globalTop);
-
-      gamesCount.textContent = String(games.length);
-      votesCount.textContent = String(games.reduce((sum, g) => sum + totalVotes(g), 0));
-      feedHint.textContent = sorted.length ? `Найдено игр: ${sorted.length}` : "Ничего не найдено";
-
-      gamesList.innerHTML = "";
-
-      if (!sorted.length) {
-        gamesList.innerHTML = `<div class="empty">Пока нет игр. Добавь первую 👀</div>`;
-        return;
-      }
-
-      sorted.forEach(game => {
-        const myVote = myVotes.get(game.id) || "";
-        const rank = globalTop.findIndex(g => g.id === game.id) + 1;
-        const tagsHtml = (game.tags || [])
-          .slice(0, 4)
-          .map(tag => `<span class="tag">${escapeHtml(tag)}</span>`)
-          .join("");
-
-        const card = document.createElement("article");
-        card.className = "game";
-        card.innerHTML = `
-          <div class="cover-wrap">
-            <img class="cover" src="${escapeHtml(game.coverUrl)}" alt="${escapeHtml(game.title)}">
-            <div class="rank">#${rank}</div>
-            <div class="author">${escapeHtml(game.submittedByName || "Друг")}</div>
-          </div>
-
-          <div class="game-body">
-            <div class="game-title">${escapeHtml(game.title)}</div>
-            <div class="game-desc">${escapeHtml(game.description || "Описание не добавлено.")}</div>
-
-            <div class="tags">
-              <span class="tag">Да: ${game.yesCount || 0}</span>
-              <span class="tag">Нет: ${game.noCount || 0}</span>
-              <span class="tag">Счёт: ${score(game)}</span>
-              ${tagsHtml}
-            </div>
-
-            <div class="vote-row">
-              <button class="vote-btn yes ${myVote === "yes" ? "active" : ""}" data-id="${game.id}" data-vote="yes">Да (${game.yesCount || 0})</button>
-              <button class="vote-btn no ${myVote === "no" ? "active" : ""}" data-id="${game.id}" data-vote="no">Нет (${game.noCount || 0})</button>
-              <a class="steam-link" href="${escapeHtml(game.steamUrl)}" target="_blank" rel="noreferrer">Steam</a>
-            </div>
+    if (!fullTop.length) {
+      topList.innerHTML = `<div class="empty">Пока нет ни одной игры.</div>`;
+    } else {
+      fullTop.forEach((game, i) => {
+        const el = document.createElement("div");
+        el.className = "mini-item";
+        el.innerHTML = `
+          <img src="${escapeHtml(game.coverUrl)}" alt="${escapeHtml(game.title)}">
+          <div>
+            <div class="mini-title">#${i + 1} ${escapeHtml(game.title)}</div>
+            <div class="mini-meta">${escapeHtml(game.submittedByName || "Друг")} · Да ${game.yesCount || 0} · Нет ${game.noCount || 0}</div>
           </div>
         `;
-
-        gamesList.appendChild(card);
-      });
-
-      gamesList.querySelectorAll(".vote-btn").forEach(btn => {
-        btn.onclick = async () => {
-          const gameId = btn.dataset.id;
-          const voteType = btn.dataset.vote;
-          await castVote(gameId, voteType);
-        };
+        topList.appendChild(el);
       });
     }
+  }
 
-    async function castVote(gameId, voteType) {
-      if (!currentUser) {
-        alert("Сначала войди через Google");
-        return;
-      }
+  function renderGames() {
+    const q = searchInput.value.trim().toLowerCase();
+    const mode = sortSelect.value;
 
-      const voteId = `${currentUser.uid}_${gameId}`;
-      const voteRef = doc(db, "votes", voteId);
-      const gameRef = doc(db, "games", gameId);
+    const filtered = games.filter(game => {
+      if (!q) return true;
 
-      try {
-        const voteSnap = await getDoc(voteRef);
-        const prevVote = voteSnap.exists() ? voteSnap.data().vote : null;
+      return [game.title, game.description, game.submittedByName, ...(game.tags || [])]
+        .filter(Boolean)
+        .some(v => String(v).toLowerCase().includes(q));
+    });
 
-        if (prevVote === voteType) {
-          await deleteDoc(voteRef);
-          await updateDoc(gameRef, {
-            [voteType === "yes" ? "yesCount" : "noCount"]: increment(-1)
-          });
-          myVotes.delete(gameId);
-          renderGames();
-          return;
-        }
+    const sorted = sortGames(filtered, mode);
+    const globalTop = sortGames(games, "top");
 
-        if (prevVote === "yes") {
-          await updateDoc(gameRef, { yesCount: increment(-1) });
-        }
-        if (prevVote === "no") {
-          await updateDoc(gameRef, { noCount: increment(-1) });
-        }
+    renderTopBlocks(globalTop);
 
-        await setDoc(voteRef, {
-          uid: currentUser.uid,
-          gameId,
-          vote: voteType,
-          userName: currentUser.displayName || currentUser.email || "Друг",
-          updatedAt: serverTimestamp()
-        });
+    gamesCount.textContent = String(games.length);
+    votesCount.textContent = String(games.reduce((sum, g) => sum + totalVotes(g), 0));
+    feedHint.textContent = sorted.length ? `Найдено игр: ${sorted.length}` : "Ничего не найдено";
 
+    gamesList.innerHTML = "";
+
+    if (!sorted.length) {
+      gamesList.innerHTML = `<div class="empty">Пока нет игр. Добавь первую 👀</div>`;
+      return;
+    }
+
+    sorted.forEach(game => {
+      const myVote = myVotes.get(game.id) || "";
+      const rank = globalTop.findIndex(g => g.id === game.id) + 1;
+      const tagsHtml = (game.tags || [])
+        .slice(0, 4)
+        .map(tag => `<span class="tag">${escapeHtml(tag)}</span>`)
+        .join("");
+
+      const card = document.createElement("article");
+      card.className = "game";
+      card.innerHTML = `
+        <div class="cover-wrap">
+          <img class="cover" src="${escapeHtml(game.coverUrl)}" alt="${escapeHtml(game.title)}">
+          <div class="rank">#${rank}</div>
+          <div class="author">${escapeHtml(game.submittedByName || "Друг")}</div>
+        </div>
+
+        <div class="game-body">
+          <div class="game-title">${escapeHtml(game.title)}</div>
+          <div class="game-desc">${escapeHtml(game.description || "Описание не добавлено.")}</div>
+
+          <div class="tags">
+            <span class="tag">Да: ${game.yesCount || 0}</span>
+            <span class="tag">Нет: ${game.noCount || 0}</span>
+            <span class="tag">Счёт: ${score(game)}</span>
+            ${tagsHtml}
+          </div>
+
+          <div class="vote-row">
+            <button class="vote-btn yes ${myVote === "yes" ? "active" : ""}" data-id="${game.id}" data-vote="yes">Да (${game.yesCount || 0})</button>
+            <button class="vote-btn no ${myVote === "no" ? "active" : ""}" data-id="${game.id}" data-vote="no">Нет (${game.noCount || 0})</button>
+            <a class="steam-link" href="${escapeHtml(game.steamUrl)}" target="_blank" rel="noreferrer">Steam</a>
+          </div>
+        </div>
+      `;
+
+      gamesList.appendChild(card);
+    });
+
+    gamesList.querySelectorAll(".vote-btn").forEach(btn => {
+      btn.onclick = async () => {
+        const gameId = btn.dataset.id;
+        const voteType = btn.dataset.vote;
+        await castVote(gameId, voteType);
+      };
+    });
+  }
+
+  async function castVote(gameId, voteType) {
+    if (!currentUser) {
+      alert("Сначала войди через Google");
+      return;
+    }
+
+    const voteId = `${currentUser.uid}_${gameId}`;
+    const voteRef = doc(db, "votes", voteId);
+    const gameRef = doc(db, "games", gameId);
+
+    try {
+      const voteSnap = await getDoc(voteRef);
+      const prevVote = voteSnap.exists() ? voteSnap.data().vote : null;
+
+      if (prevVote === voteType) {
+        await deleteDoc(voteRef);
         await updateDoc(gameRef, {
-          [voteType === "yes" ? "yesCount" : "noCount"]: increment(1)
+          [voteType === "yes" ? "yesCount" : "noCount"]: increment(-1)
         });
-
-        myVotes.set(gameId, voteType);
+        myVotes.delete(gameId);
         renderGames();
-      } catch (e) {
-        console.error(e);
-        alert("Ошибка голосования: " + (e?.message || e));
+        return;
       }
+
+      if (prevVote === "yes") {
+        await updateDoc(gameRef, { yesCount: increment(-1) });
+      }
+      if (prevVote === "no") {
+        await updateDoc(gameRef, { noCount: increment(-1) });
+      }
+
+      await setDoc(voteRef, {
+        uid: currentUser.uid,
+        gameId,
+        vote: voteType,
+        userName: currentUser.displayName || currentUser.email || "Друг",
+        updatedAt: serverTimestamp()
+      });
+
+      await updateDoc(gameRef, {
+        [voteType === "yes" ? "yesCount" : "noCount"]: increment(1)
+      });
+
+      myVotes.set(gameId, voteType);
+      renderGames();
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка голосования: " + (e?.message || e));
     }
+  }
 
-    function subscribeUsers() {
-      if (usersUnsub) usersUnsub();
+  function subscribeUsers() {
+    if (usersUnsub) usersUnsub();
 
-      usersUnsub = onSnapshot(collection(db, "users"), snap => {
+    usersUnsub = onSnapshot(collection(db, "users"), snap => {
+      const list = [];
+
+      snap.forEach(docSnap => {
+        const data = docSnap.data() || {};
+        if (currentUser && docSnap.id === currentUser.uid) return;
+
+        list.push({
+          id: docSnap.id,
+          name: data.name || "",
+          email: data.email || "",
+          photoURL: data.photoURL || ""
+        });
+      });
+
+      friends = list.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+      renderFriends();
+    });
+  }
+
+  function subscribeGames() {
+    if (gamesUnsub) gamesUnsub();
+
+    gamesUnsub = onSnapshot(
+      query(collection(db, "games"), orderBy("createdAt", "desc")),
+      snap => {
         const list = [];
 
         snap.forEach(docSnap => {
           const data = docSnap.data() || {};
-          if (currentUser && docSnap.id === currentUser.uid) return;
-
           list.push({
             id: docSnap.id,
-            name: data.name || "",
-            email: data.email || "",
-            photoURL: data.photoURL || ""
+            ...data,
+            createdAtMs: tsToMs(data.createdAt)
           });
         });
 
-        friends = list.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
-        renderFriends();
-      });
-    }
-
-    function subscribeGames() {
-      if (gamesUnsub) gamesUnsub();
-
-      gamesUnsub = onSnapshot(
-        query(collection(db, "games"), orderBy("createdAt", "desc")),
-        snap => {
-          const list = [];
-
-          snap.forEach(docSnap => {
-            const data = docSnap.data() || {};
-            list.push({
-              id: docSnap.id,
-              ...data,
-              createdAtMs: tsToMs(data.createdAt)
-            });
-          });
-
-          games = list;
-          renderGames();
-        },
-        err => {
-          console.error(err);
-          gamesList.innerHTML = `<div class="empty">Не удалось загрузить игры. Проверь правила Firestore.</div>`;
-        }
-      );
-    }
-
-    function subscribeMyVotes() {
-      if (votesUnsub) votesUnsub();
-
-      if (!currentUser) {
-        myVotes = new Map();
+        games = list;
         renderGames();
-        return;
+      },
+      err => {
+        console.error(err);
+        gamesList.innerHTML = `<div class="empty">Не удалось загрузить игры. Проверь правила Firestore.</div>`;
       }
+    );
+  }
 
-      votesUnsub = onSnapshot(collection(db, "votes"), snap => {
-        const map = new Map();
+  function subscribeMyVotes() {
+    if (votesUnsub) votesUnsub();
 
-        snap.forEach(docSnap => {
-          const data = docSnap.data() || {};
-          if (data.uid === currentUser.uid && data.gameId && data.vote) {
-            map.set(data.gameId, data.vote);
-          }
-        });
-
-        myVotes = map;
-        renderGames();
-      });
+    if (!currentUser) {
+      myVotes = new Map();
+      renderGames();
+      return;
     }
 
-    googleLoginBtn.onclick = async () => {
-      try {
-        await signInWithPopup(auth, googleProvider);
-      } catch (e) {
-        console.error(e);
-        alert("Ошибка входа через Google: " + (e?.message || e));
-      }
-    };
+    votesUnsub = onSnapshot(collection(db, "votes"), snap => {
+      const map = new Map();
 
-    logoutBtn.onclick = async () => {
-      try {
-        await signOut(auth);
-      } catch (e) {
-        console.error(e);
-        alert("Ошибка выхода: " + (e?.message || e));
-      }
-    };
-
-    publishGameBtn.onclick = async () => {
-      if (!currentUser) {
-        alert("Сначала войди через Google");
-        return;
-      }
-
-      const title = gameTitle.value.trim();
-      const steam = normalizeUrl(steamUrl.value);
-      const cover = normalizeUrl(coverUrl.value);
-      const description = gameDescription.value.trim();
-      const tags = gameTags.value.split(",").map(t => t.trim()).filter(Boolean);
-
-      if (!title || !steam || !cover) {
-        alert("Нужно заполнить название, ссылку Steam и ссылку на обложку");
-        return;
-      }
-
-      publishGameBtn.disabled = true;
-
-      try {
-        await addDoc(collection(db, "games"), {
-          title,
-          steamUrl: steam,
-          coverUrl: cover,
-          description,
-          tags,
-          yesCount: 0,
-          noCount: 0,
-          submittedByUid: currentUser.uid,
-          submittedByName: currentUser.displayName || currentUser.email || "Друг",
-          submittedByPhoto: currentUser.photoURL || "",
-          createdAt: serverTimestamp()
-        });
-
-        gameTitle.value = "";
-        steamUrl.value = "";
-        coverUrl.value = "";
-        gameDescription.value = "";
-        gameTags.value = "";
-      } catch (e) {
-        console.error(e);
-        alert("Ошибка добавления игры: " + (e?.message || e));
-      } finally {
-        publishGameBtn.disabled = false;
-      }
-    };
-
-    searchInput.addEventListener("input", renderGames);
-    sortSelect.addEventListener("change", renderGames);
-
-    onAuthStateChanged(auth, async user => {
-      currentUser = user;
-      updateMeCard();
-
-      if (!user) {
-        authHint.textContent = "Войдите через Google, чтобы добавлять игры и голосовать.";
-        googleLoginBtn.style.display = "inline-flex";
-        logoutBtn.style.display = "none";
-      } else {
-        authHint.textContent = `Вы вошли как ${user.displayName || user.email || "пользователь"}`;
-        googleLoginBtn.style.display = "none";
-        logoutBtn.style.display = "inline-flex";
-
-        try {
-          await setDoc(doc(db, "users", user.uid), {
-            name: user.displayName || "",
-            email: user.email || "",
-            photoURL: user.photoURL || "",
-            updatedAt: serverTimestamp()
-          }, { merge: true });
-        } catch (e) {
-          console.error(e);
-          alert("Не удалось записать пользователя в Firestore: " + (e?.message || e));
+      snap.forEach(docSnap => {
+        const data = docSnap.data() || {};
+        if (data.uid === currentUser.uid && data.gameId && data.vote) {
+          map.set(data.gameId, data.vote);
         }
-      }
+      });
 
-      subscribeUsers();
-      subscribeGames();
-      subscribeMyVotes();
+      myVotes = map;
+      renderGames();
     });
+  }
+
+  googleLoginBtn.onclick = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка входа через Google: " + (e?.message || e));
+    }
+  };
+
+  logoutBtn.onclick = async () => {
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка выхода: " + (e?.message || e));
+    }
+  };
+
+  publishGameBtn.onclick = async () => {
+    if (!currentUser) {
+      alert("Сначала войди через Google");
+      return;
+    }
+
+    const title = gameTitle.value.trim();
+    const steam = normalizeUrl(steamUrl.value);
+    const autoCover = buildSteamCoverUrl(steam);
+    const manualCover = normalizeUrl(coverUrl.value);
+    const finalCover = autoCover || manualCover;
+    const description = gameDescription.value.trim();
+    const tags = gameTags.value.split(",").map(t => t.trim()).filter(Boolean);
+
+    if (!title || !steam) {
+      alert("Нужно заполнить название и ссылку Steam");
+      return;
+    }
+
+    if (!finalCover) {
+      alert("Не удалось определить обложку автоматически. Вставь ссылку на обложку вручную.");
+      return;
+    }
+
+    publishGameBtn.disabled = true;
+
+    try {
+      await addDoc(collection(db, "games"), {
+        title,
+        steamUrl: steam,
+        coverUrl: finalCover,
+        description,
+        tags,
+        yesCount: 0,
+        noCount: 0,
+        submittedByUid: currentUser.uid,
+        submittedByName: currentUser.displayName || currentUser.email || "Друг",
+        submittedByPhoto: currentUser.photoURL || "",
+        createdAt: serverTimestamp()
+      });
+
+      gameTitle.value = "";
+      steamUrl.value = "";
+      coverUrl.value = "";
+      gameDescription.value = "";
+      gameTags.value = "";
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка добавления игры: " + (e?.message || e));
+    } finally {
+      publishGameBtn.disabled = false;
+    }
+  };
+
+  searchInput.addEventListener("input", renderGames);
+  sortSelect.addEventListener("change", renderGames);
+
+  onAuthStateChanged(auth, async user => {
+    currentUser = user;
+    updateMeCard();
+
+    if (!user) {
+      authHint.textContent = "Войдите через Google, чтобы добавлять игры и голосовать.";
+      googleLoginBtn.style.display = "inline-flex";
+      logoutBtn.style.display = "none";
+    } else {
+      authHint.textContent = `Вы вошли как ${user.displayName || user.email || "пользователь"}`;
+      googleLoginBtn.style.display = "none";
+      logoutBtn.style.display = "inline-flex";
+
+      try {
+        await setDoc(doc(db, "users", user.uid), {
+          name: user.displayName || "",
+          email: user.email || "",
+          photoURL: user.photoURL || "",
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } catch (e) {
+        console.error(e);
+        alert("Не удалось записать пользователя в Firestore: " + (e?.message || e));
+      }
+    }
+
+    subscribeUsers();
+    subscribeGames();
+    subscribeMyVotes();
+  });
   </script>
 </body>
 </html>
