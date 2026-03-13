@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>ZXC Chat</title>
+  <title>Steam Friends Hub</title>
 
   <style>
     :root{
@@ -15,29 +15,11 @@
       --muted:rgba(255,255,255,.60);
       --accent:#7c5cff;
       --accent2:#2dd4bf;
-      --me:linear-gradient(135deg,var(--accent),var(--accent2));
-      --other:rgba(255,255,255,.10);
+      --danger:#ff5d7a;
+      --success:#22c55e;
       --shadow:0 20px 60px rgba(0,0,0,.45);
       --shadow2:0 12px 35px rgba(0,0,0,.35);
-      --radius2:14px;
-      --gap:14px;
       --font:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,"Noto Sans";
-    }
-
-    body.theme-dark{
-      --bg:#0b1220; --panel:rgba(255,255,255,.06); --panel2:rgba(255,255,255,.08); --stroke:rgba(255,255,255,.10);
-      --text:rgba(255,255,255,.92); --muted:rgba(255,255,255,.60); --accent:#7c5cff; --accent2:#2dd4bf; --other:rgba(255,255,255,.10);
-      --shadow:0 20px 60px rgba(0,0,0,.45); --shadow2:0 12px 35px rgba(0,0,0,.35);
-    }
-    body.theme-light{
-      --bg:#f4f6fb; --panel:#fff; --panel2:#f1f3f8; --stroke:#e6e8ee;
-      --text:#0f172a; --muted:rgba(15,23,42,.60); --accent:#6366f1; --accent2:#22c55e; --other:#e9ecf3;
-      --shadow:0 18px 55px rgba(15,23,42,.12); --shadow2:0 10px 28px rgba(15,23,42,.10);
-    }
-    body.theme-masha{
-      --bg:#fff0f6; --panel:#ffd6e7; --panel2:#ffc2da; --stroke:#ff9ac8;
-      --text:#5b0042; --muted:rgba(91,0,66,.65); --accent:#ff3e9e; --accent2:#ff78b3; --other:#ffb7d3;
-      --shadow:0 18px 55px rgba(255,0,120,.20); --shadow2:0 10px 28px rgba(255,0,120,.16);
     }
 
     *{box-sizing:border-box}
@@ -45,347 +27,492 @@
     body{
       margin:0;
       font-family:var(--font);
+      color:var(--text);
       background:
         radial-gradient(1200px 800px at 15% 10%, rgba(124,92,255,.18), transparent 60%),
         radial-gradient(900px 700px at 85% 25%, rgba(45,212,191,.14), transparent 55%),
         var(--bg);
-      color:var(--text);
-      height:100dvh;
-      overflow:hidden;
+      min-height:100dvh;
     }
 
     .app{
-      width:100%;
-      height:100%;
-      min-height:0;
+      max-width:1400px;
+      margin:0 auto;
+      padding:18px;
       display:grid;
-      grid-template-columns:320px 1fr;
+      grid-template-columns:320px 1fr 320px;
+      gap:18px;
+      min-height:100dvh;
     }
 
-    .sidebar{
-      border-right:1px solid var(--stroke);
+    .panel{
       background:var(--panel);
+      border:1px solid var(--stroke);
+      border-radius:24px;
       backdrop-filter:blur(18px);
       box-shadow:var(--shadow);
-      display:flex;
-      flex-direction:column;
-      padding:18px;
-      gap:var(--gap);
+    }
+
+    .sidebar,.rightbar,.main{
+      min-height:calc(100dvh - 36px);
       overflow:hidden;
     }
 
-    .brand{display:flex; align-items:center; justify-content:space-between; gap:10px}
-    .brand h1{font-size:16px; margin:0; font-weight:900}
-    .sub{font-size:12px; color:var(--muted); margin-top:3px}
-
-    .pill-group{
-      display:flex; gap:8px; padding:6px;
-      border-radius:999px; background:var(--panel2); border:1px solid var(--stroke);
+    .sidebar,.rightbar{
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      position:sticky;
+      top:18px;
     }
-    .pill{
-      border:0; background:transparent; color:var(--text);
-      padding:8px 10px; border-radius:999px; cursor:pointer;
-      font-weight:900; font-size:12px;
-    }
-    .pill.active{background:rgba(255,255,255,.10); box-shadow:0 8px 18px rgba(0,0,0,.18)}
 
-    .auth-row{display:flex; gap:10px; flex-wrap:wrap}
+    .main{
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .brand h1{
+      margin:0;
+      font-size:24px;
+      font-weight:900;
+      letter-spacing:.2px;
+    }
+    .sub{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.35;
+    }
+
+    .btn-row{display:flex;gap:10px;flex-wrap:wrap}
     .btn{
-      border:0; cursor:pointer; font-weight:900; border-radius:12px;
-      padding:10px 12px; color:#fff;
+      border:0;
+      cursor:pointer;
+      font-weight:900;
+      border-radius:14px;
+      padding:12px 14px;
+      color:#fff;
       background:linear-gradient(135deg,var(--accent),var(--accent2));
       box-shadow:var(--shadow2);
       transition:transform .12s ease, opacity .12s ease;
-      white-space:nowrap;
     }
     .btn:hover{transform:translateY(-2px)}
-    .btn:active{transform:translateY(0); opacity:.92}
-    .btn.ghost{background:transparent; color:var(--text); border:1px solid var(--stroke); box-shadow:none}
-
-    .users-head .label{
-      font-weight:900; font-size:12px; letter-spacing:.3px;
-      color:var(--muted); text-transform:uppercase;
-      margin-top:4px;
-    }
-
-    .users{
-      flex:1; min-height:0;
-      overflow:auto; padding-right:6px;
-      -webkit-overflow-scrolling:touch;
-      overscroll-behavior:contain;
-    }
-
-    .user{
-      display:flex; gap:10px; align-items:center;
-      padding:10px; margin-bottom:10px;
+    .btn:active{transform:translateY(0);opacity:.92}
+    .btn.ghost{
+      background:transparent;
       border:1px solid var(--stroke);
-      border-radius:var(--radius2);
-      background:var(--panel2);
-      cursor:pointer;
-    }
-
-    .dot{
-      width:10px; height:10px;
-      border-radius:999px;
-      background:#ff2d55;
-      box-shadow: 0 0 0 3px rgba(255,45,85,.18);
-      flex:0 0 10px;
-      display:none;
-    }
-    .dot.on{ display:block; }
-
-    .avatar{
-      width:34px; height:34px; border-radius:12px;
-      border:1px solid var(--stroke);
-      display:grid; place-items:center;
-      font-weight:900;
-      background:linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.06));
-      overflow:hidden;
-      flex:0 0 34px;
-    }
-    .avatar img{width:100%; height:100%; object-fit:cover; display:block}
-    .meta{min-width:0; display:flex; flex-direction:column}
-    .name{font-weight:900; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-    .email{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-
-    .chat{
-      display:flex; flex-direction:column;
-      height:100%; min-height:0; min-width:0;
-    }
-
-    .chat-header{
-      flex:0 0 auto;
-      height:64px; padding:14px 16px;
-      border-bottom:1px solid var(--stroke);
-      background:var(--panel);
-      backdrop-filter:blur(18px);
-      display:flex; align-items:center; gap:12px;
-    }
-    .mobile-menu{
-      display:none;
-      border:1px solid var(--stroke);
-      background:var(--panel2);
       color:var(--text);
-      border-radius:12px;
-      width:40px; height:40px;
-      cursor:pointer;
-      box-shadow:0 10px 22px rgba(0,0,0,.18);
+      box-shadow:none;
     }
-    .chat-title{display:flex; flex-direction:column; min-width:0}
-    .chat-title .top{font-weight:950; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-    .chat-title .bottom{font-size:12px; color:var(--muted); margin-top:2px}
+    .btn.green{background:linear-gradient(135deg,#16a34a,#22c55e)}
 
-    .messages{
-      flex:1;
-      min-height:0;
-      overflow-y:auto;
-      overflow-x:hidden;
-      padding:18px;
+    .label{
+      font-weight:900;
+      font-size:12px;
+      letter-spacing:.3px;
+      color:var(--muted);
+      text-transform:uppercase;
+      margin-bottom:4px;
+    }
+
+    .friends{
       display:flex;
       flex-direction:column;
       gap:10px;
-      -webkit-overflow-scrolling:touch;
-      overscroll-behavior:contain;
-    
-      align-items:flex-start; /* не растягивать пузырь на всю ширину */
+      overflow:auto;
+      padding-right:4px;
+      min-height:120px;
     }
-    
-    .bubble{
-      display:inline-block;   /* ✅ вместо fit-content */
-      max-width:78%;
-      border-radius:18px;
-      padding:10px 12px;
-      border:1px solid var(--stroke);
-      background:var(--other);
-      backdrop-filter:blur(12px);
-      box-shadow:0 10px 28px rgba(0,0,0,.18);
-      overflow:hidden;
-      min-width: 44px;
-    }
-    
-    .bubble.me{
-      align-self:flex-end;
-      background:var(--me);
-      color:#fff;
-      border-color:rgba(255,255,255,.10);
-      box-shadow:0 12px 32px rgba(0,0,0,.22);
-    }
-    
-    .text{
-      font-size:14px;
-      line-height:1.35;
-      white-space:pre-wrap;
-      overflow-wrap:break-word; /* ✅ вместо anywhere */
-      word-break:break-word;
-    }
-    .time{margin-top:6px; font-size:11px; opacity:.75; text-align:right}
 
-    /* FIX: images never overflow / never create horizontal scroll */
-      .bubble img{
-      display:block;
-      width:100%;
-      max-width:420px;
-      height:auto;
-      max-height:min(55vh, 520px);
-      object-fit:contain;
+    .friend{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px;
+      border-radius:16px;
+      background:var(--panel2);
+      border:1px solid var(--stroke);
+    }
+
+    .avatar{
+      width:42px;
+      height:42px;
       border-radius:14px;
-      border:1px solid rgba(255,255,255,.16);
-      margin-top:8px;
+      overflow:hidden;
+      flex:0 0 42px;
+      border:1px solid var(--stroke);
+      background:linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.06));
+      display:grid;
+      place-items:center;
+      font-weight:900;
+    }
+    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
+    .friend-meta{min-width:0}
+    .friend-name{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .friend-email{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .hero{
+      display:grid;
+      grid-template-columns:1.1fr .9fr;
+      gap:16px;
+    }
+
+    .hero-card,.top-preview{
+      border-radius:24px;
+      padding:18px;
+      background:var(--panel);
+      border:1px solid var(--stroke);
+    }
+
+    .hero-title{
+      font-size:30px;
+      font-weight:950;
+      margin:0 0 8px;
+    }
+    .hero-text{
+      font-size:14px;
+      color:var(--muted);
+      line-height:1.5;
+      margin:0;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+      margin-top:16px;
+    }
+
+    .stat{
+      background:var(--panel2);
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      padding:14px;
+    }
+    .stat .v{font-size:24px;font-weight:950}
+    .stat .k{font-size:12px;color:var(--muted);margin-top:4px}
+
+    .search-row{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:12px;
+    }
+
+    .input,.textarea,select{
+      width:100%;
+      border:1px solid var(--stroke);
+      outline:none;
+      background:var(--panel2);
+      color:var(--text);
+      border-radius:16px;
+      padding:13px 14px;
+      font-size:14px;
+    }
+    .textarea{
+      min-height:100px;
+      resize:vertical;
+      font-family:inherit;
+    }
+
+    .form-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
     }
 
     .composer{
-      flex:0 0 auto;
-      padding:14px 16px;
-      border-top:1px solid var(--stroke);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      padding:16px;
+      border-radius:24px;
       background:var(--panel);
-      backdrop-filter:blur(18px);
-      display:none;
-      gap:10px;
-      align-items:center;
-      padding-bottom:calc(14px + env(safe-area-inset-bottom));
+      border:1px solid var(--stroke);
     }
 
-    .field{
-      flex:1;
-      display:flex; gap:10px; align-items:center;
-      padding:10px 12px;
-      border-radius:14px;
+    .games{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:14px;
+    }
+
+    .game{
+      overflow:hidden;
+      border-radius:24px;
+      background:var(--panel);
+      border:1px solid var(--stroke);
+      box-shadow:var(--shadow2);
+      display:flex;
+      flex-direction:column;
+    }
+
+    .cover-wrap{
+      position:relative;
+      aspect-ratio:16/9;
+      background:#101827;
+      overflow:hidden;
+    }
+    .cover{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .rank{
+      position:absolute;
+      top:12px;
+      left:12px;
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:900;
+      background:rgba(0,0,0,.58);
+      backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,.14);
+    }
+    .author{
+      position:absolute;
+      right:12px;
+      bottom:12px;
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      background:rgba(0,0,0,.58);
+      border:1px solid rgba(255,255,255,.14);
+      max-width:75%;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .game-body{padding:16px;display:flex;flex-direction:column;gap:12px;flex:1}
+    .game-title{font-size:20px;font-weight:900;line-height:1.2}
+    .game-desc{font-size:14px;color:var(--muted);line-height:1.45;min-height:40px}
+    .tags{display:flex;flex-wrap:wrap;gap:8px}
+    .tag{
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
       background:var(--panel2);
       border:1px solid var(--stroke);
-      box-shadow:0 10px 26px rgba(0,0,0,.14);
     }
-    .input{
-      flex:1; min-width:0;
-      border:0; outline:none;
-      background:transparent;
-      color:var(--text);
-      font-size:14px;
+
+    .vote-row{
+      display:grid;
+      grid-template-columns:1fr 1fr auto;
+      gap:10px;
+      margin-top:auto;
     }
-    .file{display:none}
-    .icon-btn{
-      width:42px; height:42px;
-      border-radius:14px;
+
+    .vote-btn,.steam-link{
       border:1px solid var(--stroke);
-      background:rgba(255,255,255,.08);
+      background:var(--panel2);
       color:var(--text);
-      cursor:pointer;
-      display:grid; place-items:center;
-      user-select:none;
-    }
-    .send-btn{
-      width:46px; height:46px;
       border-radius:16px;
-      border:0; cursor:pointer;
-      color:#fff; font-weight:900;
-      background:linear-gradient(135deg,var(--accent),var(--accent2));
-      box-shadow:var(--shadow2);
-      user-select:none;
-    }
-    .send-btn[disabled], .icon-btn[disabled]{
-      opacity:.55;
-      cursor:not-allowed;
-      transform:none !important;
-    }
-
-    .emoji-panel{
-      display:none;
-      gap:8px;
-      flex-wrap:wrap;
-      padding:10px 16px;
-      border-top:1px solid var(--stroke);
-      background:var(--panel);
-      backdrop-filter:blur(18px);
-    }
-    .emoji-panel.show{ display:flex; }
-    .emoji{
-      width:38px; height:38px;
-      border-radius:14px;
-      border:1px solid var(--stroke);
-      background:rgba(255,255,255,.08);
+      font-weight:900;
+      padding:12px 14px;
       cursor:pointer;
-      display:grid; place-items:center;
-      font-size:18px;
-      user-select:none;
+      text-decoration:none;
+      text-align:center;
+    }
+    .vote-btn.yes.active{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.45)}
+    .vote-btn.no.active{background:rgba(255,93,122,.18);border-color:rgba(255,93,122,.45)}
+    .steam-link{display:grid;place-items:center;min-width:104px}
+
+    .mini-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      overflow:auto;
+    }
+    .mini-item{
+      display:grid;
+      grid-template-columns:60px 1fr;
+      gap:10px;
+      padding:10px;
+      border-radius:16px;
+      border:1px solid var(--stroke);
+      background:var(--panel2);
+      align-items:center;
+    }
+    .mini-item img{
+      width:60px;
+      height:60px;
+      object-fit:cover;
+      border-radius:12px;
+      display:block;
+    }
+    .mini-title{font-size:14px;font-weight:900;line-height:1.25}
+    .mini-meta{font-size:12px;color:var(--muted);margin-top:4px}
+
+    .empty{
+      padding:18px;
+      border-radius:20px;
+      border:1px dashed var(--stroke);
+      color:var(--muted);
+      text-align:center;
+      background:rgba(255,255,255,.03);
     }
 
-    .overlay{
-      position:fixed; inset:0;
-      background:rgba(0,0,0,.40);
-      backdrop-filter:blur(2px);
-      z-index:10;
-      display:none;
+    .section-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:4px;
     }
-    .overlay.show{display:block}
+    .section-title h2,
+    .section-title h3{
+      margin:0;
+      font-size:18px;
+      font-weight:900;
+    }
+    .muted{color:var(--muted);font-size:13px}
+
+    @media (max-width: 1180px){
+      .app{grid-template-columns:300px 1fr}
+      .rightbar{grid-column:1 / -1; min-height:auto; position:static}
+      .main{grid-column:2}
+    }
 
     @media (max-width: 920px){
-      .app{grid-template-columns:1fr}
-      .sidebar{
-        position:fixed; top:0; left:0; bottom:0;
-        width:min(360px,86vw);
-        transform:translateX(-110%);
-        transition:transform .18s ease;
-        z-index:20;
-      }
-      .sidebar.open{transform:translateX(0%)}
-      .mobile-menu{display:grid; place-items:center}
-      .bubble{max-width:92%}
-      .bubble img{max-width:100%} /* mobile full width */
+      .app{grid-template-columns:1fr; padding:12px}
+      .sidebar,.main,.rightbar{min-height:auto; position:static}
+      .hero{grid-template-columns:1fr}
+      .games{grid-template-columns:1fr}
+      .form-grid,.search-row,.stats{grid-template-columns:1fr}
     }
   </style>
 </head>
 
-<body class="theme-dark">
-  <div class="overlay" id="overlay"></div>
-
+<body>
   <div class="app">
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar panel">
       <div class="brand">
-        <div>
-          <h1>ZXC Chat</h1>
-          <div class="sub" id="authHint">Войдите, чтобы начать</div>
-        </div>
-        <div class="pill-group" title="Тема">
-          <button class="pill" id="tDark" type="button">🌙</button>
-          <button class="pill" id="tLight" type="button">☀️</button>
-          <button class="pill" id="tMasha" type="button">🌸</button>
-        </div>
+        <h1>Steam Friends Hub</h1>
+        <div class="sub" id="authHint">Войдите через Google, чтобы добавлять игры и голосовать.</div>
       </div>
 
-      <div class="auth-row">
+      <div class="btn-row">
         <button class="btn" id="googleLogin" type="button">Google</button>
         <button class="btn ghost" id="logout" type="button" style="display:none;">Выйти</button>
       </div>
 
-      <div class="users-head"><div class="label">Пользователи</div></div>
-      <div class="users" id="users"></div>
+      <div>
+        <div class="label">Ваш профиль</div>
+        <div class="friend" id="meCard">
+          <div class="avatar" id="meAvatar">?</div>
+          <div class="friend-meta">
+            <div class="friend-name" id="meName">Гость</div>
+            <div class="friend-email" id="meEmail">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="label">Друзья на сайте</div>
+        <div class="friends" id="friendsList"></div>
+      </div>
     </aside>
 
-    <main class="chat">
-      <header class="chat-header">
-        <button class="mobile-menu" id="menuBtn" type="button" aria-label="Меню">☰</button>
-        <div class="chat-title">
-          <div class="top" id="chatName">Выберите пользователя</div>
-          <div class="bottom" id="chatSub">Чат появится здесь</div>
+    <main class="main panel">
+      <section class="hero">
+        <div class="hero-card">
+          <h2 class="hero-title">Общая лента игр для компании</h2>
+          <p class="hero-text">
+            Каждый зарегистрированный друг может скинуть игру из Steam, обложку и короткое описание.
+            Все видят общую ленту, голосуют «да» или «нет», а самые популярные варианты автоматически поднимаются в топ.
+          </p>
+
+          <div class="stats">
+            <div class="stat"><div class="v" id="gamesCount">0</div><div class="k">Всего игр</div></div>
+            <div class="stat"><div class="v" id="votesCount">0</div><div class="k">Всего голосов</div></div>
+            <div class="stat"><div class="v" id="friendsCount">0</div><div class="k">Друзей</div></div>
+          </div>
         </div>
-      </header>
 
-      <section class="messages" id="messages"></section>
-
-      <div class="emoji-panel" id="emojiPanel"></div>
-
-      <footer class="composer" id="sendForm">
-        <div class="field">
-          <button class="icon-btn" id="emojiBtn" type="button" title="Смайлики">🙂</button>
-          <input class="input" id="messageText" type="text" placeholder="Введите сообщение…" autocomplete="off" />
-          <input class="file" id="messageFile" type="file" accept="image/*" />
-          <button class="icon-btn" id="attachBtn" type="button" title="Прикрепить">📎</button>
+        <div class="top-preview">
+          <div class="section-title">
+            <h3>Топ 3 сейчас</h3>
+            <div class="muted">по разнице да/нет</div>
+          </div>
+          <div class="mini-list" id="topPreview"></div>
         </div>
-        <button class="send-btn" id="sendMessage" type="button" title="Отправить">➤</button>
-      </footer>
+      </section>
+
+      <section class="composer">
+        <div class="section-title">
+          <h3>Добавить игру</h3>
+          <div class="muted">Поля обязательны кроме описания</div>
+        </div>
+
+        <div class="form-grid">
+          <input class="input" id="gameTitle" type="text" placeholder="Название игры" />
+          <input class="input" id="steamUrl" type="url" placeholder="Ссылка на Steam" />
+          <input class="input" id="coverUrl" type="url" placeholder="Ссылка на обложку" />
+          <input class="input" id="gameTags" type="text" placeholder="Теги через запятую, например: кооп, хоррор" />
+        </div>
+
+        <textarea class="textarea" id="gameDescription" placeholder="Коротко: почему стоит поиграть"></textarea>
+
+        <div class="btn-row">
+          <button class="btn green" id="publishGame" type="button">Опубликовать игру</button>
+        </div>
+      </section>
+
+      <section>
+        <div class="search-row">
+          <input class="input" id="searchInput" type="text" placeholder="Поиск по названию, тегам, описанию или другу..." />
+          <select id="sortSelect">
+            <option value="top">Сначала популярные</option>
+            <option value="new">Сначала новые</option>
+            <option value="yes">Больше всего да</option>
+          </select>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-title">
+          <h2>Лента игр</h2>
+          <div class="muted" id="feedHint">Пока пусто</div>
+        </div>
+        <div class="games" id="gamesList"></div>
+      </section>
     </main>
+
+    <aside class="rightbar panel">
+      <div>
+        <div class="section-title">
+          <h3>Полный топ</h3>
+          <div class="muted">обновляется в реальном времени</div>
+        </div>
+        <div class="mini-list" id="topList"></div>
+      </div>
+
+      <div>
+        <div class="section-title">
+          <h3>Как это работает</h3>
+        </div>
+        <div class="empty" style="text-align:left; line-height:1.55;">
+          1. Друг входит через Google.<br>
+          2. Добавляет игру, обложку и описание.<br>
+          3. Игра сразу видна всем друзьям.<br>
+          4. Каждый может выбрать только один голос: да или нет.<br>
+          5. Топ строится по разнице голосов и количеству «да».<br>
+          6. Один и тот же пользователь может менять свой голос.
+        </div>
+      </div>
+    </aside>
   </div>
 
-  <!-- Put message.mp3 next to index.html -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
@@ -397,6 +524,7 @@
       signOut,
       onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
     import {
       getFirestore,
       collection,
@@ -406,11 +534,13 @@
       onSnapshot,
       doc,
       setDoc,
+      getDoc,
       serverTimestamp,
-      updateDoc
+      updateDoc,
+      deleteDoc,
+      increment
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // ===== Firebase config =====
     const firebaseConfig = {
       apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
       authDomain: "zxc1234-668aa.firebaseapp.com",
@@ -424,457 +554,502 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    try { await setPersistence(auth, browserLocalPersistence); }
-    catch (e) { console.warn("setPersistence failed:", e); }
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch (e) {
+      console.warn("Persistence error:", e);
+    }
 
     const googleProvider = new GoogleAuthProvider();
-
-    // ===== DOM =====
-    const sidebar = document.getElementById("sidebar");
-    const overlay = document.getElementById("overlay");
-    const menuBtn = document.getElementById("menuBtn");
 
     const authHint = document.getElementById("authHint");
     const googleLoginBtn = document.getElementById("googleLogin");
     const logoutBtn = document.getElementById("logout");
 
-    const usersDiv = document.getElementById("users");
-    const chatNameEl = document.getElementById("chatName");
-    const chatSubEl = document.getElementById("chatSub");
+    const meAvatar = document.getElementById("meAvatar");
+    const meName = document.getElementById("meName");
+    const meEmail = document.getElementById("meEmail");
 
-    const messagesDiv = document.getElementById("messages");
-    const sendForm = document.getElementById("sendForm");
+    const friendsList = document.getElementById("friendsList");
+    const gamesList = document.getElementById("gamesList");
+    const topList = document.getElementById("topList");
+    const topPreview = document.getElementById("topPreview");
 
-    const emojiPanel = document.getElementById("emojiPanel");
-    const emojiBtn = document.getElementById("emojiBtn");
+    const gameTitle = document.getElementById("gameTitle");
+    const steamUrl = document.getElementById("steamUrl");
+    const coverUrl = document.getElementById("coverUrl");
+    const gameDescription = document.getElementById("gameDescription");
+    const gameTags = document.getElementById("gameTags");
+    const publishGameBtn = document.getElementById("publishGame");
 
-    const messageText = document.getElementById("messageText");
-    const messageFile = document.getElementById("messageFile");
-    const attachBtn = document.getElementById("attachBtn");
-    const sendMessageBtn = document.getElementById("sendMessage");
+    const searchInput = document.getElementById("searchInput");
+    const sortSelect = document.getElementById("sortSelect");
+    const feedHint = document.getElementById("feedHint");
 
-    const tDark = document.getElementById("tDark");
-    const tLight = document.getElementById("tLight");
-    const tMasha = document.getElementById("tMasha");
+    const gamesCount = document.getElementById("gamesCount");
+    const votesCount = document.getElementById("votesCount");
+    const friendsCount = document.getElementById("friendsCount");
 
-    // ===== State =====
     let currentUser = null;
-    let currentChatId = null;
+    let friends = [];
+    let games = [];
+    let myVotes = new Map();
+
     let usersUnsub = null;
-    let messagesUnsub = null;
-    let unreadUnsub = null;
+    let gamesUnsub = null;
+    let votesUnsub = null;
 
-    // unread map: otherUid -> true/false
-    const unread = new Map();
-
-    // Track last seen message id (for sound)
-    let lastMessageId = null;
-
-    // ===== Sound =====
-    const msgSound = new Audio("message.mp3");
-    msgSound.volume = 0.6;
-
-    let audioUnlocked = false;
-    async function unlockAudioOnce(){
-      if (audioUnlocked) return;
-      audioUnlocked = true;
-      try{
-        const prev = msgSound.volume;
-        msgSound.volume = 0.001;
-        await msgSound.play();
-        msgSound.pause();
-        msgSound.currentTime = 0;
-        msgSound.volume = prev;
-      }catch(e){}
-    }
-    document.addEventListener("touchstart", unlockAudioOnce, { once: true });
-    document.addEventListener("click", unlockAudioOnce, { once: true });
-
-    async function playMsgSound(){
-      try{
-        msgSound.currentTime = 0;
-        await msgSound.play();
-      }catch(e){}
+    function initials(text) {
+      const parts = (text || "").trim().split(/\s+/).filter(Boolean);
+      return ((parts[0]?.[0] || "?") + (parts[1]?.[0] || "")).toUpperCase();
     }
 
-    // ===== Sending lock (anti-spam click) =====
-    let sending = false;
-    function setSending(v){
-      sending = v;
-      sendMessageBtn.disabled = v;
-      attachBtn.disabled = v;
-      emojiBtn.disabled = v;
-      messageText.disabled = v;
+    function escapeHtml(str = "") {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
 
-    // ===== Helpers =====
-    function setTheme(theme){
-      document.body.classList.remove("theme-dark","theme-light","theme-masha");
-      document.body.classList.add(theme);
-      localStorage.setItem("theme", theme);
-      [tDark,tLight,tMasha].forEach(b=>b.classList.remove("active"));
-      if(theme==="theme-dark") tDark.classList.add("active");
-      if(theme==="theme-light") tLight.classList.add("active");
-      if(theme==="theme-masha") tMasha.classList.add("active");
-    }
-    setTheme(localStorage.getItem("theme") || "theme-dark");
-    tDark.onclick = () => setTheme("theme-dark");
-    tLight.onclick = () => setTheme("theme-light");
-    tMasha.onclick = () => setTheme("theme-masha");
-
-    function closeSidebar(){ sidebar.classList.remove("open"); overlay.classList.remove("show"); }
-    function openSidebar(){ sidebar.classList.add("open"); overlay.classList.add("show"); }
-    menuBtn.onclick = () => sidebar.classList.contains("open") ? closeSidebar() : openSidebar();
-    overlay.onclick = closeSidebar;
-
-    function initials(s){
-      s = (s || "").trim(); if(!s) return "?";
-      const p = s.split(/\s+/).filter(Boolean);
-      return ((p[0]?.[0]||"?") + (p[1]?.[0]||"")).toUpperCase();
-    }
-    function formatTime(ts){
-      const d = ts?.toDate ? ts.toDate() : null;
-      return d ? d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
+    function normalizeUrl(url) {
+      const value = (url || "").trim();
+      if (!value) return "";
+      if (/^https?:\/\//i.test(value)) return value;
+      return "https://" + value;
     }
 
-    // ===== Emoji panel =====
-    const EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤝","👍","🙏","🔥","❤️","💔","🎉","💯","🤡","😡","😭","🥲","😴","🤔","😅","😉","🤍","🖤","🌸"];
-    function renderEmojis(){
-      emojiPanel.innerHTML = "";
-      EMOJIS.forEach(e => {
-        const b = document.createElement("button");
-        b.className = "emoji";
-        b.type = "button";
-        b.textContent = e;
-        b.onclick = () => {
-          messageText.value += e;
-          messageText.focus();
-        };
-        emojiPanel.appendChild(b);
+    function score(game) {
+      return (game.yesCount || 0) - (game.noCount || 0);
+    }
+
+    function totalVotes(game) {
+      return (game.yesCount || 0) + (game.noCount || 0);
+    }
+
+    function tsToMs(ts) {
+      try {
+        return ts?.toMillis ? ts.toMillis() : 0;
+      } catch (_) {
+        return 0;
+      }
+    }
+
+    function sortGames(list, mode) {
+      const items = [...list];
+
+      if (mode === "new") {
+        return items.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
+      }
+
+      if (mode === "yes") {
+        return items.sort((a, b) => {
+          const byYes = (b.yesCount || 0) - (a.yesCount || 0);
+          if (byYes !== 0) return byYes;
+          return score(b) - score(a);
+        });
+      }
+
+      return items.sort((a, b) => {
+        const byScore = score(b) - score(a);
+        if (byScore !== 0) return byScore;
+
+        const byYes = (b.yesCount || 0) - (a.yesCount || 0);
+        if (byYes !== 0) return byYes;
+
+        return (b.createdAtMs || 0) - (a.createdAtMs || 0);
       });
     }
-    renderEmojis();
 
-    emojiBtn.onclick = () => {
-      emojiPanel.classList.toggle("show");
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    };
+    function updateMeCard() {
+      if (!currentUser) {
+        meAvatar.innerHTML = "?";
+        meName.textContent = "Гость";
+        meEmail.textContent = "—";
+        return;
+      }
 
-    // ===== Auth =====
+      if (currentUser.photoURL) {
+        meAvatar.innerHTML = `<img src="${currentUser.photoURL}" alt="me">`;
+      } else {
+        meAvatar.textContent = initials(currentUser.displayName || currentUser.email || "Я");
+      }
+
+      meName.textContent = currentUser.displayName || "Без имени";
+      meEmail.textContent = currentUser.email || "—";
+    }
+
+    function renderFriends() {
+      friendsList.innerHTML = "";
+      friendsCount.textContent = String(friends.length);
+
+      if (!friends.length) {
+        friendsList.innerHTML = `<div class="empty">Пока никто кроме тебя не зашел.</div>`;
+        return;
+      }
+
+      friends.forEach(friend => {
+        const div = document.createElement("div");
+        div.className = "friend";
+
+        const avatar = friend.photoURL
+          ? `<div class="avatar"><img src="${friend.photoURL}" alt="${escapeHtml(friend.name || friend.email || "user")}"></div>`
+          : `<div class="avatar">${escapeHtml(initials(friend.name || friend.email || "?"))}</div>`;
+
+        div.innerHTML = `
+          ${avatar}
+          <div class="friend-meta">
+            <div class="friend-name">${escapeHtml(friend.name || "Пользователь")}</div>
+            <div class="friend-email">${escapeHtml(friend.email || "")}</div>
+          </div>
+        `;
+
+        friendsList.appendChild(div);
+      });
+    }
+
+    function renderTopBlocks(sortedTop) {
+      topPreview.innerHTML = "";
+      topList.innerHTML = "";
+
+      const preview = sortedTop.slice(0, 3);
+      const fullTop = sortedTop.slice(0, 10);
+
+      if (!preview.length) {
+        topPreview.innerHTML = `<div class="empty">Топ появится после первых игр.</div>`;
+      } else {
+        preview.forEach((game, i) => {
+          const el = document.createElement("div");
+          el.className = "mini-item";
+          el.innerHTML = `
+            <img src="${escapeHtml(game.coverUrl)}" alt="${escapeHtml(game.title)}">
+            <div>
+              <div class="mini-title">#${i + 1} ${escapeHtml(game.title)}</div>
+              <div class="mini-meta">Да: ${game.yesCount || 0} · Нет: ${game.noCount || 0} · Счёт: ${score(game)}</div>
+            </div>
+          `;
+          topPreview.appendChild(el);
+        });
+      }
+
+      if (!fullTop.length) {
+        topList.innerHTML = `<div class="empty">Пока нет ни одной игры.</div>`;
+      } else {
+        fullTop.forEach((game, i) => {
+          const el = document.createElement("div");
+          el.className = "mini-item";
+          el.innerHTML = `
+            <img src="${escapeHtml(game.coverUrl)}" alt="${escapeHtml(game.title)}">
+            <div>
+              <div class="mini-title">#${i + 1} ${escapeHtml(game.title)}</div>
+              <div class="mini-meta">${escapeHtml(game.submittedByName || "Друг")} · Да ${game.yesCount || 0} · Нет ${game.noCount || 0}</div>
+            </div>
+          `;
+          topList.appendChild(el);
+        });
+      }
+    }
+
+    function renderGames() {
+      const q = searchInput.value.trim().toLowerCase();
+      const mode = sortSelect.value;
+
+      const filtered = games.filter(game => {
+        if (!q) return true;
+
+        return [game.title, game.description, game.submittedByName, ...(game.tags || [])]
+          .filter(Boolean)
+          .some(v => String(v).toLowerCase().includes(q));
+      });
+
+      const sorted = sortGames(filtered, mode);
+      const globalTop = sortGames(games, "top");
+
+      renderTopBlocks(globalTop);
+
+      gamesCount.textContent = String(games.length);
+      votesCount.textContent = String(games.reduce((sum, g) => sum + totalVotes(g), 0));
+      feedHint.textContent = sorted.length ? `Найдено игр: ${sorted.length}` : "Ничего не найдено";
+
+      gamesList.innerHTML = "";
+
+      if (!sorted.length) {
+        gamesList.innerHTML = `<div class="empty">Пока нет игр. Добавь первую 👀</div>`;
+        return;
+      }
+
+      sorted.forEach(game => {
+        const myVote = myVotes.get(game.id) || "";
+        const rank = globalTop.findIndex(g => g.id === game.id) + 1;
+        const tagsHtml = (game.tags || [])
+          .slice(0, 4)
+          .map(tag => `<span class="tag">${escapeHtml(tag)}</span>`)
+          .join("");
+
+        const card = document.createElement("article");
+        card.className = "game";
+        card.innerHTML = `
+          <div class="cover-wrap">
+            <img class="cover" src="${escapeHtml(game.coverUrl)}" alt="${escapeHtml(game.title)}">
+            <div class="rank">#${rank}</div>
+            <div class="author">${escapeHtml(game.submittedByName || "Друг")}</div>
+          </div>
+
+          <div class="game-body">
+            <div class="game-title">${escapeHtml(game.title)}</div>
+            <div class="game-desc">${escapeHtml(game.description || "Описание не добавлено.")}</div>
+
+            <div class="tags">
+              <span class="tag">Да: ${game.yesCount || 0}</span>
+              <span class="tag">Нет: ${game.noCount || 0}</span>
+              <span class="tag">Счёт: ${score(game)}</span>
+              ${tagsHtml}
+            </div>
+
+            <div class="vote-row">
+              <button class="vote-btn yes ${myVote === "yes" ? "active" : ""}" data-id="${game.id}" data-vote="yes">Да (${game.yesCount || 0})</button>
+              <button class="vote-btn no ${myVote === "no" ? "active" : ""}" data-id="${game.id}" data-vote="no">Нет (${game.noCount || 0})</button>
+              <a class="steam-link" href="${escapeHtml(game.steamUrl)}" target="_blank" rel="noreferrer">Steam</a>
+            </div>
+          </div>
+        `;
+
+        gamesList.appendChild(card);
+      });
+
+      gamesList.querySelectorAll(".vote-btn").forEach(btn => {
+        btn.onclick = async () => {
+          const gameId = btn.dataset.id;
+          const voteType = btn.dataset.vote;
+          await castVote(gameId, voteType);
+        };
+      });
+    }
+
+    async function castVote(gameId, voteType) {
+      if (!currentUser) {
+        alert("Сначала войди через Google");
+        return;
+      }
+
+      const voteId = `${currentUser.uid}_${gameId}`;
+      const voteRef = doc(db, "votes", voteId);
+      const gameRef = doc(db, "games", gameId);
+
+      try {
+        const voteSnap = await getDoc(voteRef);
+        const prevVote = voteSnap.exists() ? voteSnap.data().vote : null;
+
+        if (prevVote === voteType) {
+          await deleteDoc(voteRef);
+          await updateDoc(gameRef, {
+            [voteType === "yes" ? "yesCount" : "noCount"]: increment(-1)
+          });
+          myVotes.delete(gameId);
+          renderGames();
+          return;
+        }
+
+        if (prevVote === "yes") {
+          await updateDoc(gameRef, { yesCount: increment(-1) });
+        }
+        if (prevVote === "no") {
+          await updateDoc(gameRef, { noCount: increment(-1) });
+        }
+
+        await setDoc(voteRef, {
+          uid: currentUser.uid,
+          gameId,
+          vote: voteType,
+          userName: currentUser.displayName || currentUser.email || "Друг",
+          updatedAt: serverTimestamp()
+        });
+
+        await updateDoc(gameRef, {
+          [voteType === "yes" ? "yesCount" : "noCount"]: increment(1)
+        });
+
+        myVotes.set(gameId, voteType);
+        renderGames();
+      } catch (e) {
+        console.error(e);
+        alert("Ошибка голосования: " + (e?.message || e));
+      }
+    }
+
+    function subscribeUsers() {
+      if (usersUnsub) usersUnsub();
+
+      usersUnsub = onSnapshot(collection(db, "users"), snap => {
+        const list = [];
+
+        snap.forEach(docSnap => {
+          const data = docSnap.data() || {};
+          if (currentUser && docSnap.id === currentUser.uid) return;
+
+          list.push({
+            id: docSnap.id,
+            name: data.name || "",
+            email: data.email || "",
+            photoURL: data.photoURL || ""
+          });
+        });
+
+        friends = list.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+        renderFriends();
+      });
+    }
+
+    function subscribeGames() {
+      if (gamesUnsub) gamesUnsub();
+
+      gamesUnsub = onSnapshot(
+        query(collection(db, "games"), orderBy("createdAt", "desc")),
+        snap => {
+          const list = [];
+
+          snap.forEach(docSnap => {
+            const data = docSnap.data() || {};
+            list.push({
+              id: docSnap.id,
+              ...data,
+              createdAtMs: tsToMs(data.createdAt)
+            });
+          });
+
+          games = list;
+          renderGames();
+        },
+        err => {
+          console.error(err);
+          gamesList.innerHTML = `<div class="empty">Не удалось загрузить игры. Проверь правила Firestore.</div>`;
+        }
+      );
+    }
+
+    function subscribeMyVotes() {
+      if (votesUnsub) votesUnsub();
+
+      if (!currentUser) {
+        myVotes = new Map();
+        renderGames();
+        return;
+      }
+
+      votesUnsub = onSnapshot(collection(db, "votes"), snap => {
+        const map = new Map();
+
+        snap.forEach(docSnap => {
+          const data = docSnap.data() || {};
+          if (data.uid === currentUser.uid && data.gameId && data.vote) {
+            map.set(data.gameId, data.vote);
+          }
+        });
+
+        myVotes = map;
+        renderGames();
+      });
+    }
+
     googleLoginBtn.onclick = async () => {
       try {
-        await unlockAudioOnce();
         await signInWithPopup(auth, googleProvider);
-      } catch(e){
+      } catch (e) {
         console.error(e);
-        alert("Google error: " + (e?.message||e));
+        alert("Ошибка входа через Google: " + (e?.message || e));
       }
     };
 
     logoutBtn.onclick = async () => {
-      try { await signOut(auth); }
-      catch(e){ console.error(e); alert("Logout error: " + (e?.message||e)); }
+      try {
+        await signOut(auth);
+      } catch (e) {
+        console.error(e);
+        alert("Ошибка выхода: " + (e?.message || e));
+      }
     };
 
-    onAuthStateChanged(auth, async (user) => {
-      currentUser = user;
-
-      if(usersUnsub){ usersUnsub(); usersUnsub=null; }
-      if(messagesUnsub){ messagesUnsub(); messagesUnsub=null; }
-      if(unreadUnsub){ unreadUnsub(); unreadUnsub=null; }
-
-      currentChatId = null;
-      lastMessageId = null;
-
-      usersDiv.innerHTML = "";
-      messagesDiv.innerHTML = "";
-      chatNameEl.textContent = "Выберите пользователя";
-      chatSubEl.textContent = "Чат появится здесь";
-      emojiPanel.classList.remove("show");
-
-      if(!user){
-        googleLoginBtn.style.display = "inline-flex";
-        logoutBtn.style.display = "none";
-        sendForm.style.display = "none";
-        authHint.textContent = "Войдите, чтобы начать";
+    publishGameBtn.onclick = async () => {
+      if (!currentUser) {
+        alert("Сначала войди через Google");
         return;
       }
 
-      googleLoginBtn.style.display = "none";
-      logoutBtn.style.display = "inline-flex";
-      sendForm.style.display = "flex";
-      authHint.textContent = user.displayName ? `Вы вошли как ${user.displayName}` : "Вы вошли";
+      const title = gameTitle.value.trim();
+      const steam = normalizeUrl(steamUrl.value);
+      const cover = normalizeUrl(coverUrl.value);
+      const description = gameDescription.value.trim();
+      const tags = gameTags.value.split(",").map(t => t.trim()).filter(Boolean);
 
-      try{
-        await setDoc(doc(db, "users", user.uid), {
-          name: user.displayName || "",
-          email: user.email || "",
-          photoURL: user.photoURL || "",
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      }catch(e){
-        console.error(e);
-        alert("Firestore users write denied: " + (e?.message || e));
+      if (!title || !steam || !cover) {
+        alert("Нужно заполнить название, ссылку Steam и ссылку на обложку");
+        return;
       }
 
-      subscribeUsers();
-      subscribeUnreadDots();
-    });
+      publishGameBtn.disabled = true;
 
-    // ===== Users list =====
-    function subscribeUsers(){
-      usersUnsub = onSnapshot(collection(db,"users"), (snap) => {
-        usersDiv.innerHTML = "";
-        let count = 0;
-
-        snap.forEach((d) => {
-          if(d.id === currentUser.uid) return;
-
-          const data = d.data() || {};
-          const otherUid = d.id;
-          const name = data.name || data.email || "Пользователь";
-          const email = data.email || "";
-
-          const item = document.createElement("div");
-          item.className = "user";
-
-          const dot = document.createElement("div");
-          dot.className = "dot" + (unread.get(otherUid) ? " on" : "");
-
-          const av = document.createElement("div");
-          av.className = "avatar";
-          if(data.photoURL){
-            const img = document.createElement("img");
-            img.src = data.photoURL;
-            img.alt = name;
-            av.appendChild(img);
-          }else{
-            av.textContent = initials(name);
-          }
-
-          const meta = document.createElement("div");
-          meta.className = "meta";
-
-          const nm = document.createElement("div");
-          nm.className = "name";
-          nm.textContent = name;
-
-          const em = document.createElement("div");
-          em.className = "email";
-          em.textContent = email;
-
-          meta.appendChild(nm);
-          meta.appendChild(em);
-
-          item.appendChild(dot);
-          item.appendChild(av);
-          item.appendChild(meta);
-
-          item.onclick = () => openChat(otherUid, name);
-
-          usersDiv.appendChild(item);
-          count++;
+      try {
+        await addDoc(collection(db, "games"), {
+          title,
+          steamUrl: steam,
+          coverUrl: cover,
+          description,
+          tags,
+          yesCount: 0,
+          noCount: 0,
+          submittedByUid: currentUser.uid,
+          submittedByName: currentUser.displayName || currentUser.email || "Друг",
+          submittedByPhoto: currentUser.photoURL || "",
+          createdAt: serverTimestamp()
         });
 
-        if(count === 0){
-          const empty = document.createElement("div");
-          empty.style.color = "var(--muted)";
-          empty.style.fontSize = "13px";
-          empty.style.padding = "10px";
-          empty.textContent = "Пока нет других пользователей. Зайди с другого аккаунта для теста.";
-          usersDiv.appendChild(empty);
-        }
-      });
-    }
-
-    // ===== Unread dots (read receipts) =====
-    function tsToMillis(ts){
-      try { return ts?.toMillis ? ts.toMillis() : 0; } catch(_) { return 0; }
-    }
-
-    function subscribeUnreadDots(){
-      unreadUnsub = onSnapshot(collection(db,"chats"), (snap) => {
-        if(!currentUser) return;
-
-        let changed = false;
-
-        snap.forEach((d) => {
-          const chat = d.data() || {};
-          if(!Array.isArray(chat.users) || !chat.users.includes(currentUser.uid)) return;
-
-          const otherUid = chat.users.find(u => u !== currentUser.uid);
-          if(!otherUid) return;
-
-          // ignore currently opened chat
-          if(currentChatId && d.id === currentChatId) return;
-
-          const lastSender = chat.lastSenderId || null;
-          const lastAt = chat.lastMessageAt || chat.updatedAt || null;
-          const readAt = chat.readBy ? chat.readBy[currentUser.uid] : null;
-
-          const isFromOther = lastSender && lastSender !== currentUser.uid;
-          const isUnread = isFromOther && tsToMillis(lastAt) > tsToMillis(readAt);
-
-          if(unread.get(otherUid) !== isUnread){
-            unread.set(otherUid, isUnread);
-            changed = true;
-          }
-        });
-
-        if(changed) subscribeUsers();
-      });
-    }
-
-    // ===== Open chat =====
-    function openChat(otherUid, otherName){
-      closeSidebar();
-
-      messagesDiv.innerHTML = "";
-      chatNameEl.textContent = otherName;
-      chatSubEl.textContent = "Сообщения в реальном времени";
-      emojiPanel.classList.remove("show");
-
-      currentChatId = [currentUser.uid, otherUid].sort().join("_");
-      lastMessageId = null;
-
-      const chatRef = doc(db,"chats",currentChatId);
-
-      setDoc(chatRef, {
-        users: [currentUser.uid, otherUid],
-        updatedAt: serverTimestamp(),
-        readBy: { [currentUser.uid]: serverTimestamp() }
-      }, { merge:true });
-
-      const messagesRef = collection(chatRef,"messages");
-      if(messagesUnsub) messagesUnsub();
-
-      messagesUnsub = onSnapshot(query(messagesRef, orderBy("timestamp")), async (snap) => {
-        messagesDiv.innerHTML = "";
-
-        snap.forEach((d) => {
-          const data = d.data() || {};
-          const b = document.createElement("div");
-          b.className = "bubble " + (data.senderId === currentUser.uid ? "me" : "other");
-
-          if(data.text){
-            const t = document.createElement("div");
-            t.className = "text";
-            t.textContent = data.text;
-            b.appendChild(t);
-          }
-
-          if(data.imageBase64){
-            const img = document.createElement("img");
-            img.src = data.imageBase64;
-            img.alt = "image";
-            b.appendChild(img);
-          }
-
-          const tm = document.createElement("div");
-          tm.className = "time";
-          tm.textContent = formatTime(data.timestamp);
-          b.appendChild(tm);
-
-          messagesDiv.appendChild(b);
-        });
-
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-        // SOUND only for new incoming message
-        const lastDoc = snap.docs[snap.docs.length - 1];
-        if(lastDoc){
-          const data = lastDoc.data() || {};
-          const isNew = lastDoc.id !== lastMessageId;
-          if(isNew && data.senderId && data.senderId !== currentUser.uid){
-            playMsgSound();
-          }
-          lastMessageId = lastDoc.id;
-        }
-
-        // mark as read (immediately) and clear dot
-        try{
-          await updateDoc(chatRef, {
-            [`readBy.${currentUser.uid}`]: serverTimestamp()
-          });
-
-          if(unread.get(otherUid) !== false){
-            unread.set(otherUid, false);
-            subscribeUsers();
-          }
-        }catch(e){}
-      });
-    }
-
-    // ===== Send message (anti multiple clicks) =====
-    attachBtn.onclick = () => messageFile.click();
-
-    messageText.addEventListener("keydown", (e) => {
-      if(e.key === "Enter"){
-        e.preventDefault();
-        sendMessageBtn.click();
-      }
-    });
-
-    sendMessageBtn.onclick = async () => {
-      if(sending) return;
-      if(!currentChatId) return alert("Выберите пользователя слева");
-
-      const text = (messageText.value || "").trim();
-      const hasFile = messageFile.files && messageFile.files.length > 0;
-      if(!text && !hasFile) return;
-
-      setSending(true);
-
-      try{
-        if(hasFile){
-          const file = messageFile.files[0];
-          const r = new FileReader();
-          r.onload = async () => {
-            try{
-              await sendMessage(text, r.result);
-              messageText.value = "";
-              messageFile.value = "";
-              messageText.focus();
-            } finally {
-              setSending(false);
-            }
-          };
-          r.readAsDataURL(file);
-        } else {
-          await sendMessage(text, null);
-          messageText.value = "";
-          messageFile.value = "";
-          messageText.focus();
-          setSending(false);
-        }
-      }catch(e){
-        setSending(false);
+        gameTitle.value = "";
+        steamUrl.value = "";
+        coverUrl.value = "";
+        gameDescription.value = "";
+        gameTags.value = "";
+      } catch (e) {
         console.error(e);
-        alert("Send error: " + (e?.message || e));
+        alert("Ошибка добавления игры: " + (e?.message || e));
+      } finally {
+        publishGameBtn.disabled = false;
       }
     };
 
-    async function sendMessage(text, imageBase64){
-      const chatRef = doc(db,"chats",currentChatId);
-      const messagesRef = collection(chatRef,"messages");
+    searchInput.addEventListener("input", renderGames);
+    sortSelect.addEventListener("change", renderGames);
 
-      await addDoc(messagesRef, {
-        senderId: currentUser.uid,
-        text: text || "",
-        imageBase64: imageBase64 || null,
-        timestamp: serverTimestamp()
-      });
+    onAuthStateChanged(auth, async user => {
+      currentUser = user;
+      updateMeCard();
 
-      await updateDoc(chatRef, {
-        lastMessage: text ? text : (imageBase64 ? "📷 Картинка" : ""),
-        lastSenderId: currentUser.uid,
-        lastMessageAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        [`readBy.${currentUser.uid}`]: serverTimestamp()
-      });
-    }
+      if (!user) {
+        authHint.textContent = "Войдите через Google, чтобы добавлять игры и голосовать.";
+        googleLoginBtn.style.display = "inline-flex";
+        logoutBtn.style.display = "none";
+      } else {
+        authHint.textContent = `Вы вошли как ${user.displayName || user.email || "пользователь"}`;
+        googleLoginBtn.style.display = "none";
+        logoutBtn.style.display = "inline-flex";
+
+        try {
+          await setDoc(doc(db, "users", user.uid), {
+            name: user.displayName || "",
+            email: user.email || "",
+            photoURL: user.photoURL || "",
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        } catch (e) {
+          console.error(e);
+          alert("Не удалось записать пользователя в Firestore: " + (e?.message || e));
+        }
+      }
+
+      subscribeUsers();
+      subscribeGames();
+      subscribeMyVotes();
+    });
   </script>
 </body>
 </html>
-
-
