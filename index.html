@@ -629,7 +629,7 @@
   function buildSteamCoverUrl(steamLink) {
     const appId = extractSteamAppId(steamLink);
     if (!appId) return "";
-    return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`;
+    return `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`;
   }
 
   function score(game) {
@@ -803,14 +803,19 @@
       card.className = "game";
       card.innerHTML = `
         <div class="cover-wrap">
-          <img class="cover" src="${escapeHtml(game.coverUrl)}" alt="${escapeHtml(game.title)}">
+          <img 
+            class="cover" 
+            src="${escapeHtml(game.coverUrl)}" 
+            alt="${escapeHtml(game.title)}"
+            onerror="this.onerror=null;this.src='https://placehold.co/800x450/0f172a/ffffff?text=No+Cover';"
+          />
           <div class="rank">#${rank}</div>
           <div class="author">${escapeHtml(game.submittedByName || "Друг")}</div>
         </div>
 
         <div class="game-body">
           <div class="game-title">${escapeHtml(game.title)}</div>
-          <div class="game-desc">${escapeHtml(game.description || "Описание не добавлено.")}</div>
+           <div class="game-desc">${escapeHtml(game.coverUrl || "coverUrl пустой")}</div>
 
           <div class="tags">
             <span class="tag">Да: ${game.yesCount || 0}</span>
