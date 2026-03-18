@@ -64,23 +64,44 @@
   const supabaseKey = 'sb_publishable_MMUvjysVPwIxm7N8oSvTuA_9_3GZWU9';
   const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-  // Регистрация с именем
+  // Регистрация с автоматическим входом
   async function register() {
     const name = document.getElementById('regName').value;
     const email = document.getElementById('regEmail').value;
     const password = document.getElementById('regPassword').value;
 
-    // создаем пользователя
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+    if (!name || !email || !password) {
+      alert('Заполните все поля!');
+      return;
+    }
+
+    // Создаём пользователя и сразу логиним
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password
+    });
+
     if (signUpError) {
       alert('Ошибка регистрации: ' + signUpError.message);
       return;
     }
 
-    // создаем профиль с именем
-    const userId = signUpData.user.id;
-    const { error: profileError } = await supabase.from('profiles').insert([
-      { id: userId, name: name, status: "Не установлен" }
+    // Иногда signUpData.user может быть null, поэтому делаем вход сразу после регистрации
+    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (loginError) {
+      alert('Ошибка входа после регистрации: ' + loginError.message);
+      return;
+    }
+
+    const user = loginData.user;
+
+    // Создаём профиль в таблице profiles
+    const { error: profileError } = await supabase.from('profiles').upsert([
+      { id: user.id, name: name, status: "Не установлен" }
     ]);
 
     if (profileError) {
@@ -88,7 +109,7 @@
       return;
     }
 
-    alert('Регистрация успешна! Вы вошли автоматически.');
+    // Показ профиля
     showProfile();
   }
 
@@ -96,6 +117,11 @@
   async function login() {
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
+
+    if (!email || !password) {
+      alert('Заполните все поля!');
+      return;
+    }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
@@ -108,8 +134,8 @@
 
   // Показ профиля
   async function showProfile() {
-    const userRes = await supabase.auth.getUser();
-    const user = userRes.data.user;
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
     if (!user) return;
 
     const { data, error } = await supabase
@@ -126,7 +152,6 @@
       document.getElementById('status').innerText = "Статус: " + data.status;
     }
 
-    // Скрываем формы регистрации и логина, показываем профиль
     document.getElementById('registerCard').style.display = 'none';
     document.getElementById('loginCard').style.display = 'none';
     document.getElementById('profileCard').style.display = 'block';
@@ -134,8 +159,8 @@
 
   // Обновление статуса
   async function updateStatus(newStatus) {
-    const userRes = await supabase.auth.getUser();
-    const user = userRes.data.user;
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
     if (!user) return;
 
     const { error } = await supabase
@@ -153,6 +178,11 @@
     document.getElementById('registerCard').style.display = 'block';
     document.getElementById('loginCard').style.display = 'block';
   }
+
+  // Автоматически показываем профиль, если пользователь уже залогинен
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (session?.user) showProfile();
+  });
 </script>
 
 </body>
