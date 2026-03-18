@@ -32,20 +32,24 @@
 </head>
 <body>
 
-<div class="card">
+<!-- Форма регистрации с именем -->
+<div class="card" id="registerCard">
   <h2>Регистрация</h2>
+  <input type="text" id="regName" placeholder="Имя">
   <input type="email" id="regEmail" placeholder="Email">
   <input type="password" id="regPassword" placeholder="Пароль">
   <button class="green" onclick="register()">Зарегистрироваться</button>
 </div>
 
-<div class="card">
+<!-- Форма логина -->
+<div class="card" id="loginCard">
   <h2>Логин</h2>
   <input type="email" id="loginEmail" placeholder="Email">
   <input type="password" id="loginPassword" placeholder="Пароль">
   <button class="blue" onclick="login()">Войти</button>
 </div>
 
+<!-- Профиль -->
 <div class="card" id="profileCard" style="display:none;">
   <h2>Мой профиль</h2>
   <p id="name">Загрузка...</p>
@@ -60,27 +64,49 @@
   const supabaseKey = 'sb_publishable_MMUvjysVPwIxm7N8oSvTuA_9_3GZWU9';
   const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-  // регистрация
+  // Регистрация с именем
   async function register() {
+    const name = document.getElementById('regName').value;
     const email = document.getElementById('regEmail').value;
     const password = document.getElementById('regPassword').value;
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) alert('Ошибка: ' + error.message);
-    else alert('Регистрация прошла! Проверь почту для подтверждения.');
+    // создаем пользователя
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+    if (signUpError) {
+      alert('Ошибка регистрации: ' + signUpError.message);
+      return;
+    }
+
+    // создаем профиль с именем
+    const userId = signUpData.user.id;
+    const { error: profileError } = await supabase.from('profiles').insert([
+      { id: userId, name: name, status: "Не установлен" }
+    ]);
+
+    if (profileError) {
+      alert('Ошибка создания профиля: ' + profileError.message);
+      return;
+    }
+
+    alert('Регистрация успешна! Вы вошли автоматически.');
+    showProfile();
   }
 
-  // логин
+  // Логин
   async function login() {
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert('Ошибка входа: ' + error.message);
-    else showProfile();
+    if (error) {
+      alert('Ошибка входа: ' + error.message);
+      return;
+    }
+
+    showProfile();
   }
 
-  // показать профиль
+  // Показ профиля
   async function showProfile() {
     const userRes = await supabase.auth.getUser();
     const user = userRes.data.user;
@@ -92,17 +118,21 @@
       .eq('id', user.id)
       .single();
 
-    document.getElementById('profileCard').style.display = 'block';
     if (error) {
       document.getElementById('name').innerText = "Профиль не найден";
       document.getElementById('status').innerText = "";
     } else {
       document.getElementById('name').innerText = "Вы: " + data.name;
-      document.getElementById('status').innerText = "Статус: " + (data.status || "Не установлен");
+      document.getElementById('status').innerText = "Статус: " + data.status;
     }
+
+    // Скрываем формы регистрации и логина, показываем профиль
+    document.getElementById('registerCard').style.display = 'none';
+    document.getElementById('loginCard').style.display = 'none';
+    document.getElementById('profileCard').style.display = 'block';
   }
 
-  // обновить статус
+  // Обновление статуса
   async function updateStatus(newStatus) {
     const userRes = await supabase.auth.getUser();
     const user = userRes.data.user;
@@ -116,10 +146,12 @@
     if (!error) showProfile();
   }
 
-  // выход
+  // Выход
   async function logout() {
     await supabase.auth.signOut();
     document.getElementById('profileCard').style.display = 'none';
+    document.getElementById('registerCard').style.display = 'block';
+    document.getElementById('loginCard').style.display = 'block';
   }
 </script>
 
