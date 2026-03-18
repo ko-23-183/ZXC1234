@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Профиль</title>
+  <title>Регистрация и Профиль</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
   <style>
@@ -11,30 +11,21 @@
       background: #f2f2f2;
       display: flex;
       justify-content: center;
-      padding-top: 50px;
+      padding-top: 40px;
+      flex-direction: column;
+      align-items: center;
     }
-
     .card {
       background: white;
       padding: 20px;
       border-radius: 10px;
-      width: 300px;
+      width: 320px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
     }
-
-    h2 { margin-bottom: 10px; }
-
-    button {
-      width: 48%;
-      padding: 10px;
-      margin: 5px 1%;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
+    input { width: 100%; padding: 8px; margin: 5px 0; }
+    button { width: 48%; padding: 10px; margin: 5px 1%; border: none; border-radius: 5px; cursor: pointer; }
     .green { background: #28a745; color: white; }
-    .yellow { background: #ffc107; }
     .blue { background: #17a2b8; color: white; }
     .gray { background: #6c757d; color: white; }
   </style>
@@ -42,53 +33,94 @@
 <body>
 
 <div class="card">
+  <h2>Регистрация</h2>
+  <input type="email" id="regEmail" placeholder="Email">
+  <input type="password" id="regPassword" placeholder="Пароль">
+  <button class="green" onclick="register()">Зарегистрироваться</button>
+</div>
+
+<div class="card">
+  <h2>Логин</h2>
+  <input type="email" id="loginEmail" placeholder="Email">
+  <input type="password" id="loginPassword" placeholder="Пароль">
+  <button class="blue" onclick="login()">Войти</button>
+</div>
+
+<div class="card" id="profileCard" style="display:none;">
   <h2>Мой профиль</h2>
   <p id="name">Загрузка...</p>
-
   <button class="green" onclick="updateStatus('Учусь')">📚 Учусь</button>
-  <button class="yellow" onclick="updateStatus('Кофе')">☕ Кофе</button>
-  <button class="blue" onclick="updateStatus('В игре')">🎮 В игре</button>
   <button class="gray" onclick="updateStatus('Дома')">🏠 Дома</button>
-
   <p id="status"></p>
+  <button class="blue" onclick="logout()">Выйти</button>
 </div>
 
 <script>
-const supabaseUrl = 'https://omqqenqlalqzjsbjhqgz.supabase.co'; // твой реальный URL Supabase
-const supabaseKey = 'sb_publishable_MMUvjysVPwIxm7N8oSvTuA_9_3GZWU9'; // твой ключ
-const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+  const supabaseUrl = 'https://omqqenqlalqzjsbjhqgz.supabase.co';
+  const supabaseKey = 'sb_publishable_MMUvjysVPwIxm7N8oSvTuA_9_3GZWU9';
+  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-async function loadProfile() {
-  const { data, error } = await supabaseClient
-    .from('profiles')
-    .select('*')
-    .limit(1)
-    .single();
+  // регистрация
+  async function register() {
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
 
-  if (error) {
-    console.error(error);
-    document.getElementById('name').innerText = "Ошибка загрузки профиля";
-    return;
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) alert('Ошибка: ' + error.message);
+    else alert('Регистрация прошла! Проверь почту для подтверждения.');
   }
 
-  document.getElementById('name').innerText = "Вы зашли как: " + data.name;
-  document.getElementById('status').innerText = "Статус: " + data.status;
-}
+  // логин
+  async function login() {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
 
-async function updateStatus(newStatus) {
-  const { error } = await supabaseClient
-    .from('profiles')
-    .update({ status: newStatus })
-    .eq('id', 1); // убедись, что запись существует
-
-  if (error) {
-    console.error(error);
-  } else {
-    loadProfile();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert('Ошибка входа: ' + error.message);
+    else showProfile();
   }
-}
 
-loadProfile();
+  // показать профиль
+  async function showProfile() {
+    const userRes = await supabase.auth.getUser();
+    const user = userRes.data.user;
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    document.getElementById('profileCard').style.display = 'block';
+    if (error) {
+      document.getElementById('name').innerText = "Профиль не найден";
+      document.getElementById('status').innerText = "";
+    } else {
+      document.getElementById('name').innerText = "Вы: " + data.name;
+      document.getElementById('status').innerText = "Статус: " + (data.status || "Не установлен");
+    }
+  }
+
+  // обновить статус
+  async function updateStatus(newStatus) {
+    const userRes = await supabase.auth.getUser();
+    const user = userRes.data.user;
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ status: newStatus })
+      .eq('id', user.id);
+
+    if (!error) showProfile();
+  }
+
+  // выход
+  async function logout() {
+    await supabase.auth.signOut();
+    document.getElementById('profileCard').style.display = 'none';
+  }
 </script>
 
 </body>
