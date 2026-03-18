@@ -22,9 +22,7 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
-    h2 {
-      margin-bottom: 10px;
-    }
+    h2 { margin-bottom: 10px; }
 
     button {
       width: 48%;
@@ -56,17 +54,12 @@
 </div>
 
 <script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-
-<script>
-const supabaseUrl = 'https://ko-23-183.github.io/ZXC1234/'; // твой URL
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcXFlbnFsYWxxempzYmpocWd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3NzkxMDEsImV4cCI6MjA4OTM1NTEwMX0.6VQ2s6hDbLIQ7pnADUqDaRo1NgEfnSbgpqj0cBsUu2o'; // твой ключ
-
+const supabaseUrl = 'https://omqqenqlalqzjsbjhqgz.supabase.co'; // твой реальный URL Supabase
+const supabaseKey = 'sb_publishable_MMUvjysVPwIxm7N8oSvTuA_9_3GZWU9'; // твой ключ
 const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-</script>// загрузка профиля
 async function loadProfile() {
-  let { data, error } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from('profiles')
     .select('*')
     .limit(1)
@@ -74,6 +67,7 @@ async function loadProfile() {
 
   if (error) {
     console.error(error);
+    document.getElementById('name').innerText = "Ошибка загрузки профиля";
     return;
   }
 
@@ -81,12 +75,11 @@ async function loadProfile() {
   document.getElementById('status').innerText = "Статус: " + data.status;
 }
 
-// обновление статуса
 async function updateStatus(newStatus) {
-  let { error } = await supabaseClient
+  const { error } = await supabaseClient
     .from('profiles')
     .update({ status: newStatus })
-    .eq('id', 1);
+    .eq('id', 1); // убедись, что запись существует
 
   if (error) {
     console.error(error);
