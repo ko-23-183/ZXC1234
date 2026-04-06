@@ -2,187 +2,80 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Регистрация и Профиль</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-
+  <title>Регистрация</title>
   <style>
     body {
-      font-family: Arial;
-      background: #f2f2f2;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
       display: flex;
       justify-content: center;
-      padding-top: 40px;
-      flex-direction: column;
       align-items: center;
+      height: 100vh;
     }
-    .card {
+    .container {
       background: white;
       padding: 20px;
       border-radius: 10px;
-      width: 320px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 300px;
     }
-    input { width: 100%; padding: 8px; margin: 5px 0; }
-    button { width: 48%; padding: 10px; margin: 5px 1%; border: none; border-radius: 5px; cursor: pointer; }
-    .green { background: #28a745; color: white; }
-    .blue { background: #17a2b8; color: white; }
-    .gray { background: #6c757d; color: white; }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
   </style>
 </head>
 <body>
 
-<!-- Форма регистрации с именем -->
-<div class="card" id="registerCard">
+<div class="container">
   <h2>Регистрация</h2>
-  <input type="text" id="regName" placeholder="Имя">
-  <input type="email" id="regEmail" placeholder="Email">
-  <input type="password" id="regPassword" placeholder="Пароль">
-  <button class="green" onclick="register()">Зарегистрироваться</button>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Пароль">
+  <button onclick="register()">Зарегистрироваться</button>
+  <p id="message"></p>
 </div>
 
-<!-- Форма логина -->
-<div class="card" id="loginCard">
-  <h2>Логин</h2>
-  <input type="email" id="loginEmail" placeholder="Email">
-  <input type="password" id="loginPassword" placeholder="Пароль">
-  <button class="blue" onclick="login()">Войти</button>
-</div>
-
-<!-- Профиль -->
-<div class="card" id="profileCard" style="display:none;">
-  <h2>Мой профиль</h2>
-  <p id="name">Загрузка...</p>
-  <button class="green" onclick="updateStatus('Учусь')">📚 Учусь</button>
-  <button class="gray" onclick="updateStatus('Дома')">🏠 Дома</button>
-  <p id="status"></p>
-  <button class="blue" onclick="logout()">Выйти</button>
-</div>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 <script>
-  const supabaseUrl = 'https://omqqenqlalqzjsbjhqgz.supabase.co';
-  const supabaseKey = 'sb_publishable_MMUvjysVPwIxm7N8oSvTuA_9_3GZWU9';
+  const supabaseUrl = "https://omqqenqlalqzjsbjhqgz.supabase.co";
+  const supabaseKey = "sb_publishable_MMUvjysVPwIxm7N8oSvTuA_9_3GZWU9"; // вставь сюда ключ
+
   const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-  // Регистрация с автоматическим входом
   async function register() {
-    const name = document.getElementById('regName').value;
-    const email = document.getElementById('regEmail').value;
-    const password = document.getElementById('regPassword').value;
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-    if (!name || !email || !password) {
-      alert('Заполните все поля!');
-      return;
-    }
-
-    // Создаём пользователя и сразу логиним
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password
     });
 
-    if (signUpError) {
-      alert('Ошибка регистрации: ' + signUpError.message);
-      return;
-    }
-
-    // Иногда signUpData.user может быть null, поэтому делаем вход сразу после регистрации
-    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (loginError) {
-      alert('Ошибка входа после регистрации: ' + loginError.message);
-      return;
-    }
-
-    const user = loginData.user;
-
-    // Создаём профиль в таблице profiles
-    const { error: profileError } = await supabase.from('profiles').upsert([
-      { id: user.id, name: name, status: "Не установлен" }
-    ]);
-
-    if (profileError) {
-      alert('Ошибка создания профиля: ' + profileError.message);
-      return;
-    }
-
-    // Показ профиля
-    showProfile();
-  }
-
-  // Логин
-  async function login() {
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-
-    if (!email || !password) {
-      alert('Заполните все поля!');
-      return;
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      alert('Ошибка входа: ' + error.message);
-      return;
-    }
-
-    showProfile();
-  }
-
-  // Показ профиля
-  async function showProfile() {
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    const message = document.getElementById("message");
 
     if (error) {
-      document.getElementById('name').innerText = "Профиль не найден";
-      document.getElementById('status').innerText = "";
+      message.innerText = "Ошибка: " + error.message;
+      message.style.color = "red";
     } else {
-      document.getElementById('name').innerText = "Вы: " + data.name;
-      document.getElementById('status').innerText = "Статус: " + data.status;
+      message.innerText = "Успешно! Проверь почту.";
+      message.style.color = "green";
     }
-
-    document.getElementById('registerCard').style.display = 'none';
-    document.getElementById('loginCard').style.display = 'none';
-    document.getElementById('profileCard').style.display = 'block';
   }
-
-  // Обновление статуса
-  async function updateStatus(newStatus) {
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-    if (!user) return;
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ status: newStatus })
-      .eq('id', user.id);
-
-    if (!error) showProfile();
-  }
-
-  // Выход
-  async function logout() {
-    await supabase.auth.signOut();
-    document.getElementById('profileCard').style.display = 'none';
-    document.getElementById('registerCard').style.display = 'block';
-    document.getElementById('loginCard').style.display = 'block';
-  }
-
-  // Автоматически показываем профиль, если пользователь уже залогинен
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (session?.user) showProfile();
-  });
 </script>
 
 </body>
