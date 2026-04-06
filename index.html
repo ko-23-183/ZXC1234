@@ -50,27 +50,23 @@
   <p id="message"></p>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   const supabaseUrl = "https://omqqenqlalqzjsbjhqgz.supabase.co";
   const supabaseKey = "sb_publishable_MMUvjysVPwIxm7N8oSvTuA_9_3GZWU9";
 
   const client = supabase.createClient(supabaseUrl, supabaseKey);
 
-  async function register() {
+  window.register = async function () {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
     const message = document.getElementById("message");
 
-    if (!email || !password) {
-      message.innerText = "Заполни все поля";
-      message.style.color = "red";
-      return;
-    }
+    console.log("clicked", email);
 
     const { data, error } = await client.auth.signUp({
-      email: email,
-      password: password
+      email,
+      password
     });
 
     if (error) {
@@ -78,7 +74,6 @@
       message.innerText = "Ошибка: " + error.message;
       message.style.color = "red";
     } else {
-      console.log(data);
       message.innerText = "Успешно! Проверь почту.";
       message.style.color = "green";
     }
