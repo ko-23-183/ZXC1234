@@ -66,42 +66,47 @@
   const client = supabase.createClient(supabaseUrl, supabaseKey);
 
   window.register = async function () {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const status = document.getElementById("status").value;
-    const message = document.getElementById("message");
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const status = document.getElementById("status").value;
+  const message = document.getElementById("message");
 
-    if (!status) {
-      message.innerText = "Выбери статус";
-      message.style.color = "red";
-      return;
-    }
-
-    const { data, error } = await client.auth.signUp({
-      email,
-      password
-    });
-
-    if (error) {
-      console.log(error);
-      message.innerText = "Ошибка: " + error.message;
-      message.style.color = "red";
-    } else {
-      // сохраняем статус в таблицу profiles
-      const user = data.user;
-
-      if (user) {
-        await client.from('profiles').insert({
-          id: user.id,
-          username: email,
-          status: status
-        });
-      }
-
-      message.innerText = "Успешно! Статус сохранён.";
-      message.style.color = "green";
-    }
+  if (!status) {
+    message.innerText = "Выбери статус";
+    return;
   }
+
+  const { data, error } = await client.auth.signUp({
+    email,
+    password
+  });
+
+  console.log("SIGNUP:", data, error);
+
+  if (error) {
+    message.innerText = error.message;
+    return;
+  }
+
+  if (!data.user) {
+    message.innerText = "Проверь почту для подтверждения!";
+    return;
+  }
+
+  const { error: insertError } = await client.from('profiles').insert({
+    id: data.user.id,
+    username: email,
+    status: status
+  });
+
+  console.log("INSERT:", insertError);
+
+  if (insertError) {
+    message.innerText = insertError.message;
+  } else {
+    message.innerText = "Готово!";
+  }
+}
 </script>
 
 </body>
