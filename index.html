@@ -19,7 +19,7 @@
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
       width: 300px;
     }
-    input {
+    input, select {
       width: 100%;
       padding: 10px;
       margin: 10px 0;
@@ -46,6 +46,14 @@
   <h2>Регистрация</h2>
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Пароль">
+
+  <select id="status">
+    <option value="">Выбери статус</option>
+    <option value="Учусь">Учусь</option>
+    <option value="Работаю">Работаю</option>
+    <option value="Отдыхаю">Отдыхаю</option>
+  </select>
+
   <button onclick="register()">Зарегистрироваться</button>
   <p id="message"></p>
 </div>
@@ -60,9 +68,14 @@
   window.register = async function () {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
+    const status = document.getElementById("status").value;
     const message = document.getElementById("message");
 
-    console.log("clicked", email);
+    if (!status) {
+      message.innerText = "Выбери статус";
+      message.style.color = "red";
+      return;
+    }
 
     const { data, error } = await client.auth.signUp({
       email,
@@ -74,7 +87,18 @@
       message.innerText = "Ошибка: " + error.message;
       message.style.color = "red";
     } else {
-      message.innerText = "Успешно! Проверь почту.";
+      // сохраняем статус в таблицу profiles
+      const user = data.user;
+
+      if (user) {
+        await client.from('profiles').insert({
+          id: user.id,
+          username: email,
+          status: status
+        });
+      }
+
+      message.innerText = "Успешно! Статус сохранён.";
       message.style.color = "green";
     }
   }
