@@ -1,16 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <title>Status Monitor</title>
+  <meta charset="UTF-8">
+  <title>Регистрация</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 300px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
 </head>
 <body>
 
-<h2>Статус</h2>
-
-<input id="status" placeholder="Введите статус">
-<button onclick="updateStatus()">Обновить</button>
-
-<p id="currentStatus"></p>
+<div class="container">
+  <h2>Регистрация</h2>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Пароль">
+  <button onclick="register()">Зарегистрироваться</button>
+  <p id="message"></p>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -19,33 +57,27 @@
 
   const client = supabase.createClient(supabaseUrl, supabaseKey);
 
-  const userId = "ТВОЙ_ID_ИЗ_ТАБЛИЦЫ"; // ← вставь сюда
+  window.register = async function () {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const message = document.getElementById("message");
 
-  async function loadStatus() {
-    const { data } = await client
-      .from('profiles')
-      .select('status')
-      .eq('id', userId)
-      .single();
+    console.log("clicked", email);
 
-    document.getElementById("currentStatus").innerText =
-      "Текущий статус: " + data.status;
-  }
+    const { data, error } = await client.auth.signUp({
+      email,
+      password
+    });
 
-  async function updateStatus() {
-    const newStatus = document.getElementById("status").value;
-
-    const { error } = await client
-      .from('profiles')
-      .update({ status: newStatus })
-      .eq('id', userId);
-
-    if (!error) {
-      loadStatus();
+    if (error) {
+      console.log(error);
+      message.innerText = "Ошибка: " + error.message;
+      message.style.color = "red";
+    } else {
+      message.innerText = "Успешно! Проверь почту.";
+      message.style.color = "green";
     }
   }
-
-  loadStatus();
 </script>
 
 </body>
