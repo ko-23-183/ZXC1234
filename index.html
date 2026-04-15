@@ -1,111 +1,63 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Firebase Auth + Firestore</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+<meta charset="UTF-8">
+<title>Reactive Firebase App</title>
+<style>
+body {
+  font-family: Arial;
+  background: #111;
+  color: white;
+  display: flex;
+  justify-content: center;
+}
 
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-    }
+.container {
+  width: 400px;
+  margin-top: 50px;
+}
 
-    .box {
-      width: 360px;
-      padding: 30px;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(15px);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: #fff;
-      text-align: center;
-    }
+.post {
+  background: #222;
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 10px;
+}
 
-    .box h2 {
-      margin-bottom: 20px;
-      font-weight: 600;
-    }
-
-    input {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 12px;
-      outline: none;
-      font-size: 14px;
-    }
-
-    input::placeholder {
-      color: #999;
-    }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      border: none;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-
-    button:hover {
-      transform: translateY(-2px);
-    }
-
-    .btn-reg {
-      background: #00c6ff;
-      color: #fff;
-    }
-
-    .btn-login {
-      background: #00e676;
-      color: #fff;
-    }
-
-    .btn-logout {
-      background: #ff5252;
-      color: #fff;
-    }
-
-    #status {
-      margin-top: 15px;
-      font-size: 13px;
-      min-height: 20px;
-    }
-  </style>
+button {
+  padding: 5px 10px;
+  cursor: pointer;
+}
+</style>
 </head>
+
 <body>
+<div class="container">
 
-<div class="box">
-  <h2>🔥 Firebase Auth</h2>
+<h2>🔥 Реактивная лента</h2>
 
-  <input type="email" id="email" placeholder="Email">
-  <input type="password" id="password" placeholder="Пароль">
+<input id="text" placeholder="Напиши пост">
+<button onclick="addPost()">Отправить</button>
 
-  <button class="btn-reg" onclick="register()">Зарегистрироваться</button>
-  <button class="btn-login" onclick="login()">Войти</button>
-  <button class="btn-logout" onclick="logout()">Выйти</button>
+<div id="feed"></div>
 
-  <div id="status"></div>
 </div>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  doc,
+  updateDoc,
+  increment,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
@@ -113,51 +65,55 @@ const firebaseConfig = {
   projectId: "zxc1234-668aa",
   storageBucket: "zxc1234-668aa.firebasestorage.app",
   messagingSenderId: "587825633345",
-  appId: "1:587825633345:web:2f098c987369bc934c0ec0",
-  measurementId: "G-KSXSPNXJVP"
+  appId: "1:587825633345:web:2f098c987369bc934c0ec0"
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getFirestore(app);
 
-window.register = async function() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+// ➕ Добавить пост
+window.addPost = async function () {
+  const text = document.getElementById("text").value;
 
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
+  await addDoc(collection(db, "posts"), {
+    text: text,
+    likes: 0,
+    timestamp: serverTimestamp()
+  });
 
-    await setDoc(doc(db, "users", user.uid), {
-      email: user.email,
-      uid: user.uid,
-      createdAt: new Date().toISOString()
-    });
-
-    document.getElementById("status").innerText = "Регистрация успешна 🔥";
-  } catch (error) {
-    document.getElementById("status").innerText = error.message;
-  }
+  document.getElementById("text").value = "";
 };
 
-window.login = async function() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+// 🔥 Реактивное обновление (REAL TIME)
+const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
 
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-    document.getElementById("status").innerText = "Вход выполнен ✅";
-  } catch (error) {
-    document.getElementById("status").innerText = error.message;
-  }
+onSnapshot(q, (snapshot) => {
+  const feed = document.getElementById("feed");
+  feed.innerHTML = "";
+
+  snapshot.forEach((docItem) => {
+    const data = docItem.data();
+
+    feed.innerHTML += `
+      <div class="post">
+        <p>${data.text}</p>
+        <button onclick="likePost('${docItem.id}', ${data.likes})">
+          ❤️ ${data.likes}
+        </button>
+      </div>
+    `;
+  });
+});
+
+// 👍 Лайки (атомарное обновление)
+window.likePost = async function(id) {
+  const ref = doc(db, "posts", id);
+
+  await updateDoc(ref, {
+    likes: increment(1)
+  });
 };
 
-window.logout = async function() {
-  await signOut(auth);
-  document.getElementById("status").innerText = "Вы вышли 👋";
-};
 </script>
-
 </body>
 </html>
