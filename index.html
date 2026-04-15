@@ -2,12 +2,10 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Firebase Auth</title>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+  <title>Firebase Auth + Firestore</title>
   <style>
-    body { font-family: Arial; background:#f5f5f5; display:flex; justify-content:center; align-items:center; height:100vh; }
-    .box { background:white; padding:20px; border-radius:12px; box-shadow:0 0 10px rgba(0,0,0,0.1); width:300px; }
+    body { font-family: Arial; background:#f4f4f4; display:flex; justify-content:center; align-items:center; height:100vh; }
+    .box { background:#fff; padding:20px; border-radius:12px; width:320px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
     input, button { width:100%; padding:10px; margin:8px 0; }
     button { cursor:pointer; }
   </style>
@@ -15,59 +13,72 @@
 <body>
 
 <div class="box">
-  <h2>Регистрация</h2>
+  <h2>Регистрация / Вход</h2>
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Пароль">
+
   <button onclick="register()">Зарегистрироваться</button>
-
-  <h2>Вход</h2>
   <button onclick="login()">Войти</button>
+  <button onclick="logout()">Выйти</button>
 
-  <h3 id="status"></h3>
+  <p id="status"></p>
 </div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
-    authDomain: "zxc1234-668aa.firebaseapp.com",
-    projectId: "zxc1234-668aa",
-    storageBucket: "zxc1234-668aa.firebasestorage.app",
-    messagingSenderId: "587825633345",
-    appId: "1:587825633345:web:2f098c987369bc934c0ec0",
-    measurementId: "G-KSXSPNXJVP"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
+  authDomain: "zxc1234-668aa.firebaseapp.com",
+  projectId: "zxc1234-668aa",
+  storageBucket: "zxc1234-668aa.firebasestorage.app",
+  messagingSenderId: "587825633345",
+  appId: "1:587825633345:web:2f098c987369bc934c0ec0",
+  measurementId: "G-KSXSPNXJVP"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-  window.register = function() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+window.register = async function() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-    createUserWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        document.getElementById('status').innerText = "Регистрация успешна";
-      })
-      .catch((error) => {
-        document.getElementById('status').innerText = error.message;
-      });
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    await setDoc(doc(db, "users", user.uid), {
+      email: user.email,
+      uid: user.uid,
+      createdAt: new Date().toISOString()
+    });
+
+    document.getElementById("status").innerText = "Регистрация успешна и сохранено в Firestore";
+  } catch (error) {
+    document.getElementById("status").innerText = error.message;
   }
+};
 
-  window.login = function() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+window.login = async function() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        document.getElementById('status').innerText = "Вход выполнен";
-      })
-      .catch((error) => {
-        document.getElementById('status').innerText = error.message;
-      });
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    document.getElementById("status").innerText = "Вход выполнен";
+  } catch (error) {
+    document.getElementById("status").innerText = error.message;
   }
+};
+
+window.logout = async function() {
+  await signOut(auth);
+  document.getElementById("status").innerText = "Вы вышли";
+};
 </script>
 
 </body>
