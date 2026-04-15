@@ -4,24 +4,102 @@
   <meta charset="UTF-8">
   <title>Firebase Auth + Firestore</title>
   <style>
-    body { font-family: Arial; background:#f4f4f4; display:flex; justify-content:center; align-items:center; height:100vh; }
-    .box { background:#fff; padding:20px; border-radius:12px; width:320px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
-    input, button { width:100%; padding:10px; margin:8px 0; }
-    button { cursor:pointer; }
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    .box {
+      width: 360px;
+      padding: 30px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(15px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      text-align: center;
+    }
+
+    .box h2 {
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 12px;
+      outline: none;
+      font-size: 14px;
+    }
+
+    input::placeholder {
+      color: #999;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-reg {
+      background: #00c6ff;
+      color: #fff;
+    }
+
+    .btn-login {
+      background: #00e676;
+      color: #fff;
+    }
+
+    .btn-logout {
+      background: #ff5252;
+      color: #fff;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-size: 13px;
+      min-height: 20px;
+    }
   </style>
 </head>
 <body>
 
 <div class="box">
-  <h2>Регистрация / Вход</h2>
+  <h2>🔥 Firebase Auth</h2>
+
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Пароль">
 
-  <button onclick="register()">Зарегистрироваться</button>
-  <button onclick="login()">Войти</button>
-  <button onclick="logout()">Выйти</button>
+  <button class="btn-reg" onclick="register()">Зарегистрироваться</button>
+  <button class="btn-login" onclick="login()">Войти</button>
+  <button class="btn-logout" onclick="logout()">Выйти</button>
 
-  <p id="status"></p>
+  <div id="status"></div>
 </div>
 
 <script type="module">
@@ -57,7 +135,7 @@ window.register = async function() {
       createdAt: new Date().toISOString()
     });
 
-    document.getElementById("status").innerText = "Регистрация успешна и сохранено в Firestore";
+    document.getElementById("status").innerText = "Регистрация успешна 🔥";
   } catch (error) {
     document.getElementById("status").innerText = error.message;
   }
@@ -69,7 +147,7 @@ window.login = async function() {
 
   try {
     await signInWithEmailAndPassword(auth, email, password);
-    document.getElementById("status").innerText = "Вход выполнен";
+    document.getElementById("status").innerText = "Вход выполнен ✅";
   } catch (error) {
     document.getElementById("status").innerText = error.message;
   }
@@ -77,7 +155,7 @@ window.login = async function() {
 
 window.logout = async function() {
   await signOut(auth);
-  document.getElementById("status").innerText = "Вы вышли";
+  document.getElementById("status").innerText = "Вы вышли 👋";
 };
 </script>
 
