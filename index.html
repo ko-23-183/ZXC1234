@@ -13,8 +13,24 @@ body {
 }
 
 .container {
-  width: 400px;
+  width: 420px;
   margin-top: 50px;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: none;
+}
+
+button {
+  padding: 8px 12px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: none;
 }
 
 .post {
@@ -24,9 +40,14 @@ body {
   border-radius: 10px;
 }
 
-button {
-  padding: 5px 10px;
-  cursor: pointer;
+.like {
+  background: #ff3b5c;
+  color: white;
+}
+
+.test {
+  background: #00c6ff;
+  color: black;
 }
 </style>
 </head>
@@ -34,10 +55,11 @@ button {
 <body>
 <div class="container">
 
-<h2>🔥 Реактивная лента</h2>
+<h2>🔥 Реактивная лента Firebase</h2>
 
 <input id="text" placeholder="Напиши пост">
-<button onclick="addPost()">Отправить</button>
+<button onclick="addPost()">Отправить пост</button>
+<button class="test" onclick="testWrite()">Тест Firestore</button>
 
 <div id="feed"></div>
 
@@ -71,20 +93,38 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ➕ Добавить пост
+// ➕ Добавление поста
 window.addPost = async function () {
   const text = document.getElementById("text").value;
 
-  await addDoc(collection(db, "posts"), {
-    text: text,
-    likes: 0,
-    timestamp: serverTimestamp()
-  });
+  try {
+    await addDoc(collection(db, "posts"), {
+      text: text,
+      likes: 0,
+      timestamp: serverTimestamp()
+    });
 
-  document.getElementById("text").value = "";
+    document.getElementById("text").value = "";
+  } catch (e) {
+    console.error(e);
+  }
 };
 
-// 🔥 Реактивное обновление (REAL TIME)
+// 🔥 ТЕСТ ЗАПИСИ В FIRESTORE
+window.testWrite = async function () {
+  try {
+    await addDoc(collection(db, "test"), {
+      text: "Hello Firestore",
+      time: new Date().toISOString()
+    });
+    alert("Запись создана в Firestore (test)");
+  } catch (e) {
+    console.error("Firestore error:", e);
+    alert("Ошибка записи. Проверь Rules или Firestore.");
+  }
+};
+
+// 🔄 Реактивная лента
 const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
 
 onSnapshot(q, (snapshot) => {
@@ -97,7 +137,7 @@ onSnapshot(q, (snapshot) => {
     feed.innerHTML += `
       <div class="post">
         <p>${data.text}</p>
-        <button onclick="likePost('${docItem.id}', ${data.likes})">
+        <button class="like" onclick="likePost('${docItem.id}')">
           ❤️ ${data.likes}
         </button>
       </div>
@@ -105,7 +145,7 @@ onSnapshot(q, (snapshot) => {
   });
 });
 
-// 👍 Лайки (атомарное обновление)
+// 👍 Лайки (атомарно)
 window.likePost = async function(id) {
   const ref = doc(db, "posts", id);
 
