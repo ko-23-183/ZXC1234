@@ -2,111 +2,72 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Регистрация</title>
+  <title>Firebase Auth</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .container {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      width: 300px;
-    }
-    input, select {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    button {
-      width: 100%;
-      padding: 10px;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
-    }
+    body { font-family: Arial; background:#f5f5f5; display:flex; justify-content:center; align-items:center; height:100vh; }
+    .box { background:white; padding:20px; border-radius:12px; box-shadow:0 0 10px rgba(0,0,0,0.1); width:300px; }
+    input, button { width:100%; padding:10px; margin:8px 0; }
+    button { cursor:pointer; }
   </style>
 </head>
 <body>
 
-<div class="container">
+<div class="box">
   <h2>Регистрация</h2>
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Пароль">
-
-  <select id="status">
-    <option value="">Выбери статус</option>
-    <option value="Учусь">Учусь</option>
-    <option value="Работаю">Работаю</option>
-    <option value="Отдыхаю">Отдыхаю</option>
-  </select>
-
   <button onclick="register()">Зарегистрироваться</button>
-  <p id="message"></p>
+
+  <h2>Вход</h2>
+  <button onclick="login()">Войти</button>
+
+  <h3 id="status"></h3>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const supabaseUrl = "https://omqqenqlalqzjsbjhqgz.supabase.co";
-  const supabaseKey = "sb_publishable_MMUvjysVPwIxm7N8oSvTuA_9_3GZWU9";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-  const client = supabase.createClient(supabaseUrl, supabaseKey);
+  const firebaseConfig = {
+    apiKey: "AIzaSyC9L_I4iP-Kr-GeQiVCtrywRDLwy0JxO1Y",
+    authDomain: "zxc1234-668aa.firebaseapp.com",
+    projectId: "zxc1234-668aa",
+    storageBucket: "zxc1234-668aa.firebasestorage.app",
+    messagingSenderId: "587825633345",
+    appId: "1:587825633345:web:2f098c987369bc934c0ec0",
+    measurementId: "G-KSXSPNXJVP"
+  };
 
-  window.register = async function () {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  const status = document.getElementById("status").value;
-  const message = document.getElementById("message");
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
 
-  if (!status) {
-    message.innerText = "Выбери статус";
-    return;
+  window.register = function() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    createUserWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        document.getElementById('status').innerText = "Регистрация успешна";
+      })
+      .catch((error) => {
+        document.getElementById('status').innerText = error.message;
+      });
   }
 
-  const { data, error } = await client.auth.signUp({
-    email,
-    password
-  });
+  window.login = function() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
 
-  console.log("SIGNUP:", data, error);
-
-  if (error) {
-    message.innerText = error.message;
-    return;
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        document.getElementById('status').innerText = "Вход выполнен";
+      })
+      .catch((error) => {
+        document.getElementById('status').innerText = error.message;
+      });
   }
-
-  if (!data.user) {
-    message.innerText = "Проверь почту для подтверждения!";
-    return;
-  }
-
-  const { error: insertError } = await client.from('profiles').insert({
-    id: data.user.id,
-    username: email,
-    status: status
-  });
-
-  console.log("INSERT:", insertError);
-
-  if (insertError) {
-    message.innerText = insertError.message;
-  } else {
-    message.innerText = "Готово!";
-  }
-}
 </script>
 
 </body>
