@@ -2,11 +2,12 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Reactive Firebase App</title>
+<title>Firebase Google Auth</title>
+
 <style>
 body {
   font-family: Arial;
-  background: #111;
+  background: #0f0f0f;
   color: white;
   display: flex;
   justify-content: center;
@@ -14,54 +15,43 @@ body {
 
 .container {
   width: 420px;
-  margin-top: 50px;
-}
-
-input {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-  border-radius: 8px;
-  border: none;
+  margin-top: 40px;
 }
 
 button {
-  padding: 8px 12px;
-  cursor: pointer;
-  margin-bottom: 10px;
-  border-radius: 8px;
+  padding: 10px;
+  margin: 5px 0;
+  width: 100%;
   border: none;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
-.post {
-  background: #222;
-  padding: 15px;
-  margin: 10px 0;
-  border-radius: 10px;
-}
-
-.like {
-  background: #ff3b5c;
-  color: white;
-}
-
-.test {
-  background: #00c6ff;
-  color: black;
-}
+.google { background: #4285F4; color: white; }
+.logout { background: #ff4b4b; color: white; }
+.post { background: #222; padding: 10px; margin: 10px 0; border-radius: 10px; }
 </style>
 </head>
 
 <body>
+
 <div class="container">
 
-<h2>🔥 Реактивная лента Firebase</h2>
+<h2>🔥 Firebase + Google Auth</h2>
 
-<input id="text" placeholder="Напиши пост">
-<button onclick="addPost()">Отправить пост</button>
-<button class="test" onclick="testWrite()">Тест Firestore</button>
+<button class="google" onclick="login()">Войти через Google</button>
+<button class="logout" onclick="logout()">Выйти</button>
 
-<div id="feed"></div>
+<hr>
+
+<div id="app" style="display:none;">
+  <input id="text" placeholder="Напиши пост">
+  <button onclick="addPost()">Отправить</button>
+
+  <div id="feed"></div>
+</div>
+
+<p id="status"></p>
 
 </div>
 
@@ -69,15 +59,20 @@ button {
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+import {
   getFirestore,
   collection,
   addDoc,
   onSnapshot,
   query,
   orderBy,
-  doc,
-  updateDoc,
-  increment,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -91,69 +86,67 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
 
-// ➕ Добавление поста
-window.addPost = async function () {
-  const text = document.getElementById("text").value;
-
-  try {
-    await addDoc(collection(db, "posts"), {
-      text: text,
-      likes: 0,
-      timestamp: serverTimestamp()
-    });
-
-    document.getElementById("text").value = "";
-  } catch (e) {
-    console.error(e);
-  }
+// 🔐 LOGIN GOOGLE
+window.login = async function() {
+  await signInWithPopup(auth, provider);
 };
 
-// 🔥 ТЕСТ ЗАПИСИ В FIRESTORE
-window.testWrite = async function () {
-  try {
-    await addDoc(collection(db, "test"), {
-      text: "Hello Firestore",
-      time: new Date().toISOString()
-    });
-    alert("Запись создана в Firestore (test)");
-  } catch (e) {
-    console.error("Firestore error:", e);
-    alert("Ошибка записи. Проверь Rules или Firestore.");
-  }
+// 🚪 LOGOUT
+window.logout = async function() {
+  await signOut(auth);
 };
 
-// 🔄 Реактивная лента
-const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
+// 👀 AUTH STATE
+onAuthStateChanged(auth, (user) => {
 
-onSnapshot(q, (snapshot) => {
-  const feed = document.getElementById("feed");
-  feed.innerHTML = "";
-
-  snapshot.forEach((docItem) => {
-    const data = docItem.data();
-
-    feed.innerHTML += `
-      <div class="post">
-        <p>${data.text}</p>
-        <button class="like" onclick="likePost('${docItem.id}')">
-          ❤️ ${data.likes}
-        </button>
-      </div>
-    `;
-  });
+  if (user) {
+    document.getElementById("app").style.display = "block";
+    document.getElementById("status").innerText = "Привет " + user.email;
+    loadPosts();
+  } else {
+    document.getElementById("app").style.display = "none";
+    document.getElementById("status").innerText = "Вы не вошли";
+  }
 });
 
-// 👍 Лайки (атомарно)
-window.likePost = async function(id) {
-  const ref = doc(db, "posts", id);
+// ➕ ADD POST
+window.addPost = async function() {
+  const text = document.getElementById("text").value;
 
-  await updateDoc(ref, {
-    likes: increment(1)
+  await addDoc(collection(db, "posts"), {
+    text: text,
+    uid: auth.currentUser.uid,
+    createdAt: serverTimestamp()
   });
+
+  document.getElementById("text").value = "";
 };
 
+// 🔄 REALTIME
+function loadPosts() {
+  const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+
+  onSnapshot(q, (snapshot) => {
+    const feed = document.getElementById("feed");
+    feed.innerHTML = "";
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+
+      feed.innerHTML += `
+        <div class="post">
+          <p>${data.text}</p>
+        </div>
+      `;
+    });
+  });
+}
+
 </script>
+
 </body>
 </html>
